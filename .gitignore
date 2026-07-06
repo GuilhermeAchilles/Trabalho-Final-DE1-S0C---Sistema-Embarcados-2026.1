@@ -1,0 +1,14 @@
+*.py
+*.png
+!*fase*.png
+!cenario/**/*.png
+
+# Diretórios que não devem ir pro github
+build/
+.vscode/
+.claude/
+scratch/
+sprites marcus/
+icones_escolhidos/
+barra de tiros/
+Demake_Metal_Slug_De1Soc-main/
