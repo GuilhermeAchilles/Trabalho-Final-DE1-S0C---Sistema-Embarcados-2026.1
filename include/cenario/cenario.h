@@ -40,6 +40,8 @@ int cenario_chao_y(const cenario_t *c, int x, int start_y);
 
 /* Reposiciona a camera pra centralizar (alvo_x, alvo_y), presa aos cantos do mundo. */
 void cenario_centralizar_camera(cenario_t *c, int alvo_x, int alvo_y);
+void cenario_desenhar_bg(const cenario_t *c);
+void cenario_desenhar_fg(const cenario_t *c);
 
 /* Desenha fundo + frente ja com o deslocamento da camera.
    Chame antes de desenhar personagens/tiros. */

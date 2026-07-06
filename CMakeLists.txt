@@ -16,13 +16,24 @@ add_executable(metalslug
     src/ui.c
     src/hardware_state.c
     src/fase1_logic.c
+    src/fase2_logic.c
+    src/fase3_logic.c
     sprite/sprite.c
     animacao/animacao.c
     ataques/tiros/tiro.c
     colisao/colisao.c
     inimigo/inimigo.c
     cenario/cenario.c
-    cenario/fase1/fase1_dados.c)
+    cenario/fase1/fase1_dados.c
+    cenario/fase2/fase2_dados.c
+    cenario/fase3/fase3_dados.c
+    menu/menu.c
+    menu/menu_dados.c
+    menu/press_start_dados.c
+    game_over/game_over.c
+    game_over/game_over_dados.c
+    final_tela/final_tela.c
+    final_tela/final_tela_dados.c)
 
 target_include_directories(metalslug PRIVATE include)
 

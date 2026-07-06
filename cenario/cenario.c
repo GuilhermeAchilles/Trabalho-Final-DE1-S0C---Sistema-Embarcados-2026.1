@@ -49,7 +49,7 @@ void cenario_centralizar_camera(cenario_t *c, int alvo_x, int alvo_y) {
     c->camera_y = cam_y;
 }
 
-void cenario_desenhar(const cenario_t *c) {
+void cenario_desenhar_bg(const cenario_t *c) {
     for (int sy = 0; sy < FB_HEIGHT; sy++) {
         int wy = c->camera_y + sy;
         if (wy < 0 || wy >= c->altura) continue;
@@ -58,15 +58,26 @@ void cenario_desenhar(const cenario_t *c) {
         for (int sx = 0; sx < FB_WIDTH; sx++) {
             int wx = c->camera_x + sx;
             if (wx < 0 || wx >= c->largura) continue;
+            fb_put_pixel(sx, sy, c->bg[linha + wx]);
+        }
+    }
+}
 
-            uint16_t cor = c->bg[linha + wx];
-            if (c->fg != NULL) {
-                uint16_t frente = c->fg[linha + wx];
-                if (frente != 0x0000) {
-                    cor = frente;
-                }
+void cenario_desenhar_fg(const cenario_t *c) {
+    if (c->fg == NULL) return;
+    for (int sy = 0; sy < FB_HEIGHT; sy++) {
+        int wy = c->camera_y + sy;
+        if (wy < 0 || wy >= c->altura) continue;
+        int linha = wy * c->largura;
+
+        for (int sx = 0; sx < FB_WIDTH; sx++) {
+            int wx = c->camera_x + sx;
+            if (wx < 0 || wx >= c->largura) continue;
+            
+            uint16_t frente = c->fg[linha + wx];
+            if (frente != 0x0000) {
+                fb_put_pixel(sx, sy, frente);
             }
-            fb_put_pixel(sx, sy, cor);
         }
     }
 }

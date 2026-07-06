@@ -20,7 +20,7 @@
 
 #define INIMIGO_INTERVALO_TIRO 180
 #define INIMIGO_VIDA   4
-#define FASE1_TOTAL_INIMIGOS 50
+#define FASE1_TOTAL_INIMIGOS 10
 #define INIMIGOS_SIMULTANEOS  3
 
 typedef struct {
@@ -29,7 +29,7 @@ typedef struct {
 } soldado_slot_t;
 
 static void spawnar_soldado(soldado_slot_t *slot, const cenario_t *c, int indice_spawn, tipo_tiro_t tiro) {
-    int x = c->camera_x + 20 + (rand() % (FB_WIDTH - 60));
+    int x = 20 + (rand() % (c->largura - 60));
     int chao = cenario_chao_y(c, x + 38 / 2, 0); // SOLDADO_LARGURA = 38
     inimigo_iniciar(&slot->inimigo, x, c->camera_y - 80, chao - 45, INIMIGO_VIDA,
                      soldado_parado_frames, SOLDADO_PARADO_FRAME_COUNT, 10,
@@ -44,8 +44,9 @@ static void spawnar_soldado(soldado_slot_t *slot, const cenario_t *c, int indice
 
 static void desenhar_cena_fase_1(const cenario_t *c, const jogador_t *j, const tiros_t *tiros,
                                  const soldado_slot_t *soldados, int total_soldados, const tiros_t *tiros_inimigo,
-                                 int mira_tela_x, int mira_tela_y, float dx, float dy, int inimigos_restantes, int frame_contador) {
-    cenario_desenhar(c);
+                                 int mira_tela_x, int mira_tela_y, float dx, float dy, int inimigos_restantes, int frame_contador, int fase_terminando) {
+    cenario_desenhar_bg(c);
+    cenario_desenhar_fg(c);
     desenhar_icones(c->camera_x, c->camera_y, frame_contador);
     jogador_desenhar(j, c->camera_x, c->camera_y);
     tiros_desenhar(tiros, c->camera_x, c->camera_y);
@@ -62,6 +63,9 @@ static void desenhar_cena_fase_1(const cenario_t *c, const jogador_t *j, const t
     desenhar_barras(j->tiros_normais_restantes, j->cooldown_superaquecimento, 
                     j->tiros_carregados_restantes, j->cooldown_recarregar_forte);
     desenhar_numero_2_digitos(inimigos_restantes, FB_WIDTH - 4 - (3 * 2 + 2 + 3 * 2), 4, 2, fb_rgb(255, 255, 255));
+    if (fase_terminando) {
+        desenhar_sinal_go(FB_WIDTH - 40, 20, frame_contador);
+    }
     fb_present();
 }
 
@@ -91,12 +95,22 @@ int rodar_fase_1(jogador_t *jogador) {
 
     int frame_contador = 0;
     int venceu = 0;
+    int fase_terminando = 0;
+    int fase_entrada = 1;
 
     while (!fb_poll_quit()) {
         frame_contador++;
-        int fire_clique, fire_forte_clique;
-        jogador_atualizar_entrada_tiro(jogador, &fire_clique, &fire_forte_clique);
-        jogador_atualizar(jogador, &cenario);
+        int fire_clique = 0, fire_forte_clique = 0;
+        
+        if (!fase_entrada) {
+            jogador_atualizar_entrada_tiro(jogador, &fire_clique, &fire_forte_clique);
+        }
+        
+        jogador_atualizar(jogador, &cenario, fase_entrada);
+
+        if (fase_entrada && jogador->px >= 50) {
+            fase_entrada = 0;
+        }
 
         int centro_mundo_x, centro_mundo_y;
         jogador_centro(jogador, &centro_mundo_x, &centro_mundo_y);
@@ -122,8 +136,10 @@ int rodar_fase_1(jogador_t *jogador) {
 
         jogador_atualizar_animacao(jogador, dy);
 
-        jogador_processar_tiro(jogador, &tiros, fire_clique, fire_forte_clique,
-                               centro_mundo_x, centro_mundo_y, dx, dy);
+        if (!fase_entrada) {
+            jogador_processar_tiro(jogador, &tiros, fire_clique, fire_forte_clique,
+                                   centro_mundo_x, centro_mundo_y, dx, dy);
+        }
         tiros_atualizar(&tiros);
 
         for (int i = 0; i < INIMIGOS_SIMULTANEOS; i++) {
@@ -174,7 +190,7 @@ int rodar_fase_1(jogador_t *jogador) {
         hw_leds_vida_personagem = jogador->vida;
 
         desenhar_cena_fase_1(&cenario, jogador, &tiros, soldados, INIMIGOS_SIMULTANEOS, &tiros_inimigo,
-                             mira_tela_x, mira_tela_y, dx, dy, inimigos_restantes, frame_contador);
+                             mira_tela_x, mira_tela_y, dx, dy, inimigos_restantes, frame_contador, fase_terminando);
 
         if (jogador->estado == ESTADO_MORRER && animacao_terminou(&jogador->anim_morrer)) {
             venceu = 0;
@@ -182,6 +198,10 @@ int rodar_fase_1(jogador_t *jogador) {
         }
 
         if (inimigos_mortos >= FASE1_TOTAL_INIMIGOS) {
+            fase_terminando = 1;
+        }
+
+        if (fase_terminando && jogador->px > cenario.largura - 50) {
             venceu = 1;
             break;
         }

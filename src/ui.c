@@ -1,5 +1,7 @@
 #include "ui/ui.h"
 #include "framebuffer/framebuffer.h"
+#include "sprite/sprite.h"
+#include "ui/go_sign.h"
 #include "icones/icone_vida.h"
 #include "icones/icone_velocidade.h"
 #include "icones/icone_instakill.h"
@@ -277,5 +279,19 @@ void desenhar_texto(const char *texto, int x, int y, int escala, fb_color_t cor)
             }
         }
         cur_x += 4 * escala; // 3 width + 1 space
+    }
+}
+
+void desenhar_sinal_go(int x, int y, int frame_contador) {
+    int anim_velocidade = 6;
+    int frame_index = (frame_contador / anim_velocidade) % GO_SIGN_FRAMES;
+    
+    for (int i = 0; i < GO_SIGN_HEIGHT; i++) {
+        for (int j = 0; j < GO_SIGN_WIDTH; j++) {
+            uint16_t cor = go_sign_data[frame_index][i * GO_SIGN_WIDTH + j];
+            if (cor != GO_SIGN_CHROMA_KEY) {
+                fb_put_pixel(x + j, y + i, cor);
+            }
+        }
     }
 }

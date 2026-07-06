@@ -6,48 +6,85 @@
 #include "ui/ui.h"
 #include "cenario/fases.h"
 
-/* Retorna 1 se o jogador quer reiniciar, 0 se quer sair */
-int tela_game_over(void) {
-    int restart = 0;
-    while (!fb_poll_quit()) {
-        fb_clear(fb_rgb(0, 0, 0));
-        
-        desenhar_texto("GAME OVER", FB_WIDTH / 2 - 36, FB_HEIGHT / 2 - 20, 2, fb_rgb(255, 0, 0));
-        desenhar_texto("CLIQUE ESQUERDO REINICIAR", FB_WIDTH / 2 - 100, FB_HEIGHT / 2 + 10, 1, fb_rgb(255, 255, 255));
-        desenhar_texto("CLIQUE DIREITO SAIR", FB_WIDTH / 2 - 76, FB_HEIGHT / 2 + 25, 1, fb_rgb(255, 255, 255));
-        
-        fb_present();
-        
-        if (fb_key_down(FB_KEY_FIRE)) {
-            restart = 1;
-            break;
-        }
-        if (fb_key_down(FB_KEY_FIRE_FORTE)) {
-            restart = 0;
-            break;
-        }
-    }
-    return restart;
-}
+#include "menu/menu.h"
+#include "game_over/game_over.h"
+#include "final_tela/final_tela.h"
+
+typedef enum {
+    ESTADO_MENU,
+    ESTADO_FASE1,
+    ESTADO_FASE2,
+    ESTADO_FASE3,
+    ESTADO_FINAL,
+    ESTADO_GAME_OVER,
+    ESTADO_SAIR
+} estado_jogo_t;
 
 int main(int argc, char *argv[]) {
     fb_init();
 
-    while (1) {
-        jogador_t jogador;
-        jogador_iniciar(&jogador, 30, 20);
+    estado_jogo_t estado_atual = ESTADO_MENU;
 
-        int passou = rodar_fase_1(&jogador);
+    while (estado_atual != ESTADO_SAIR) {
+        if (estado_atual == ESTADO_MENU) {
+            int iniciar = tela_menu();
+            if (iniciar) {
+                estado_atual = ESTADO_FASE1;
+            } else {
+                estado_atual = ESTADO_SAIR;
+            }
+        } else if (estado_atual == ESTADO_FASE1) {
+            jogador_t jogador;
+            jogador_iniciar(&jogador, -30, 20);
 
-        if (passou) {
-            printf("Parabens! Voce sobreviveu a Fase 1 e matou 50 soldados!\n");
-            // rodar_fase_2(&jogador);
-            break; // Sai por enquanto
-        } else {
-            printf("Game Over! Voce morreu na Fase 1.\n");
-            int quer_reiniciar = tela_game_over();
-            if (!quer_reiniciar) {
-                break;
+            int passou = rodar_fase_1(&jogador);
+
+            if (passou) {
+                printf("Parabens! Voce sobreviveu a Fase 1 e matou 10 soldados!\n");
+                estado_atual = ESTADO_FASE2; 
+            } else {
+                printf("Game Over! Voce morreu na Fase 1.\n");
+                estado_atual = ESTADO_GAME_OVER;
+            }
+        } else if (estado_atual == ESTADO_FASE2) {
+            jogador_t jogador;
+            jogador_iniciar(&jogador, -30, 160);
+
+            int passou = rodar_fase_2(&jogador);
+
+            if (passou) {
+                printf("Parabens! Voce venceu a Fase 2!\n");
+                estado_atual = ESTADO_FASE3; 
+            } else {
+                printf("Game Over! Voce morreu na Fase 2.\n");
+                estado_atual = ESTADO_GAME_OVER;
+            }
+        } else if (estado_atual == ESTADO_FASE3) {
+            jogador_t jogador;
+            jogador_iniciar(&jogador, -30, 160);
+
+            int passou = rodar_fase_3(&jogador);
+
+            if (passou) {
+                printf("Parabens! Voce fechou o jogo e passou da Fase 3!\n");
+                estado_atual = ESTADO_FINAL; 
+            } else {
+                printf("Game Over! Voce morreu na Fase 3.\n");
+                estado_atual = ESTADO_GAME_OVER;
+            }
+        } else if (estado_atual == ESTADO_GAME_OVER) {
+            int reiniciar = tela_game_over_nova();
+            if (reiniciar) {
+                estado_atual = ESTADO_FASE1;
+            } else {
+                estado_atual = ESTADO_SAIR;
+            }
+        } else if (estado_atual == ESTADO_FINAL) {
+            int iniciar = tela_final();
+            if (iniciar) {
+                estado_atual = ESTADO_MENU;
+            } else {
+                estado_atual = ESTADO_SAIR;
             }
         }
     }

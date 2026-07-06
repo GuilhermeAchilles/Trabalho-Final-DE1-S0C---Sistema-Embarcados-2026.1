@@ -149,7 +149,7 @@ void inimigo_atualizar(inimigo_t *inimigo, tiros_t *tiros, int alvo_x, int alvo_
         inimigo->direcao = (vx < 0.0f) ? -1 : 1;
     }
 
-    if (inimigo->cooldown_tiro == 0) {
+    if (inimigo->cooldown_tiro == 0 && dist < 250.0f) {
         float dx = (dist > 0.0f) ? vx / dist : (float)inimigo->direcao;
         float dy = (dist > 0.0f) ? vy / dist : 0.0f;
 

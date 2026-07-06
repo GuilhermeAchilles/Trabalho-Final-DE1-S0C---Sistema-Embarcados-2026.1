@@ -130,11 +130,15 @@ static int chao_sob_jogador(const cenario_t *c, int x, int y0, int y1, int drop_
    que isso bloqueia como parede. Isso e o que faz o personagem subir/descer rampas
    andando, em vez de simplesmente atravessar plataformas (que nao bloqueiam colisao
    lateral por si so). */
-static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_through) {
+static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_through, int cutscene_mode) {
     int passo = 0;
     int vel = j->buff_velocidade > 0 ? PLAYER_SPEED * 2 : PLAYER_SPEED;
-    if (fb_key_down(FB_KEY_LEFT))  { passo -= vel; j->direcao = -1; }
-    if (fb_key_down(FB_KEY_RIGHT)) { passo += vel; j->direcao = 1;  }
+    if (cutscene_mode) {
+        passo += vel; j->direcao = 1;
+    } else {
+        if (fb_key_down(FB_KEY_LEFT))  { passo -= vel; j->direcao = -1; }
+        if (fb_key_down(FB_KEY_RIGHT)) { passo += vel; j->direcao = 1;  }
+    }
     if (passo == 0) return 0;
 
     int novo_px = j->px + passo;
@@ -222,8 +226,11 @@ static void jogador_limitar_ao_mundo(jogador_t *j, const cenario_t *c) {
 }
 
 /* Decide estado + move o jogador conforme o input e a fisica do cenario. */
-void jogador_atualizar(jogador_t *j, const cenario_t *c) {
-    int acao_edge = borda_de_subida(fb_key_down(FB_KEY_ACTION), &j->acao_pressionada_antes);
+void jogador_atualizar(jogador_t *j, const cenario_t *c, int cutscene_mode) {
+    int acao_edge = 0;
+    if (!cutscene_mode) {
+        acao_edge = borda_de_subida(fb_key_down(FB_KEY_ACTION), &j->acao_pressionada_antes);
+    }
 
     if (j->estado == ESTADO_MORRER) {
         /* preso na animacao de morrer até apertar ACAO de novo (revive no spawn - demo) */
@@ -238,8 +245,8 @@ void jogador_atualizar(jogador_t *j, const cenario_t *c) {
         return;
     }
 
-    int drop_through = fb_key_down(FB_KEY_DOWN); /* segurar pra baixo atravessa plataformas */
-    int movendo = jogador_mover_horizontal(j, c, drop_through);
+    int drop_through = !cutscene_mode && fb_key_down(FB_KEY_DOWN); /* segurar pra baixo atravessa plataformas */
+    int movendo = jogador_mover_horizontal(j, c, drop_through, cutscene_mode);
 
     if (j->buff_velocidade > 0) j->buff_velocidade--;
     if (j->buff_instakill > 0) j->buff_instakill--;

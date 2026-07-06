@@ -78,7 +78,7 @@ retangulo_t jogador_hitbox(const jogador_t *j);
 void jogador_receber_dano(jogador_t *j, int dano);
 void jogador_centro(const jogador_t *j, int *cx, int *cy);
 void jogador_atualizar_entrada_tiro(jogador_t *j, int *fire_clique, int *fire_forte_clique);
-void jogador_atualizar(jogador_t *j, const cenario_t *c);
+void jogador_atualizar(jogador_t *j, const cenario_t *c, int cutscene_mode);
 void jogador_atualizar_animacao(jogador_t *j, float dy);
 void jogador_desenhar(const jogador_t *j, int camera_x, int camera_y);
 void jogador_processar_tiro(jogador_t *j, tiros_t *tiros, int fire_clique, int fire_forte_clique, int centro_x, int centro_y, float dx, float dy);

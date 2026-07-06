@@ -86,7 +86,7 @@ int fb_key_down(fb_key_t key) {
             Uint32 botoes = SDL_GetMouseState(NULL, NULL);
             return (botoes & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
         }
-        case FB_KEY_JUMP:   return keys[SDL_SCANCODE_LSHIFT];
+        case FB_KEY_JUMP:   return keys[SDL_SCANCODE_SPACE];
         case FB_KEY_ACTION: return keys[SDL_SCANCODE_K];
     }
     return 0;

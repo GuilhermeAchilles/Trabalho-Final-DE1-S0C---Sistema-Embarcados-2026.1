@@ -24,6 +24,7 @@ extern icone_t icones_mapa[MAX_ICONES];
 void desenhar_linha_horizontal(int x0, int x1, int y, fb_color_t cor);
 void desenhar_triangulo_preenchido(int x0, int y0, int x1, int y1, int x2, int y2, fb_color_t cor);
 void desenhar_mira(int cx, int cy, float dx, float dy, fb_color_t cor);
+void desenhar_sinal_go(int x, int y, int frame_contador);
 void desenhar_vida(int vida, int vida_maxima);
 void desenhar_numero_2_digitos(int numero, int x, int y, int escala, fb_color_t cor);
 void desenhar_texto(const char *texto, int x, int y, int escala, fb_color_t cor);
