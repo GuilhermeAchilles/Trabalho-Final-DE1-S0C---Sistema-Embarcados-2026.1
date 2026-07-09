@@ -1,5 +1,6 @@
 #include "framebuffer/framebuffer.h"
 #include <SDL2/SDL.h>
+#include "hardware/hardware_state.h"
 
 /* Dev-only preview backend: renders the same pixel buffer the DE1-SoC
    would receive, scaled up in a window, so character code never touches SDL. */
@@ -65,7 +66,12 @@ int fb_poll_quit(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) return 1;
-        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) return 1;
+        if (event.type == SDL_KEYDOWN) {
+            if (event.key.keysym.sym == SDLK_ESCAPE) return 1;
+            if (event.key.keysym.sym == SDLK_p) {
+                hw_jogo_pausado = !hw_jogo_pausado;
+            }
+        }
     }
     return 0;
 }
