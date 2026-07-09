@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <time.h>
+#include "hardware/hardware_state.h"
 
 /* =========================================================================
    PIXEL BUFFER VGA — mapeamento de memória direto no hardware
@@ -17,12 +18,23 @@
    Endereço físico e span conforme configuração padrão do Pixel Buffer
    DE1-SoC (320x240, RGB565). Confirme FB_PHYS_ADDR e FB_SPAN contra a
    configuração real do Qsys/Platform Designer da sua FPGA.             */
+#define FB_PHYS_ADDR_FRONT 0xC8000000
+#define FB_PHYS_ADDR_BACK  0xC0000000
+#define FB_SPAN            (512 * FB_HEIGHT * sizeof(fb_color_t))
 
-#define FB_PHYS_ADDR 0x08000000
-#define FB_SPAN      (FB_WIDTH * FB_HEIGHT * sizeof(fb_color_t))
+#define CHAR_BUF_ADDR      0xC9000000
+#define CHAR_BUF_SPAN      0x2000 // 8KB
+
+#define LW_BRIDGE_ADDR     0xFF200000
+#define LW_BRIDGE_SPAN     0x200000 // 2MB
 
 static int mem_fd = -1;
-static volatile fb_color_t *fb_ptr = NULL;
+static volatile fb_color_t *fb_buf_front = NULL;
+static volatile fb_color_t *fb_buf_back = NULL;
+static volatile fb_color_t *fb_ptr = NULL; // Active drawing buffer
+
+static volatile char *char_ptr = NULL;
+static volatile void *lw_ptr = NULL;
 
 /* =========================================================================
    SISTEMA DE INPUT — Thread em background (teclado + mouse USB)
@@ -54,8 +66,29 @@ static volatile int input_running = 0;
 /* Threads de input */
 static pthread_t kbd_thread;
 static pthread_t mouse_thread;
+static pthread_t switch_thread;
 static int kbd_thread_criada  = 0;
 static int mouse_thread_criada = 0;
+static int switch_thread_criada = 0;
+
+/* -------------------------------------------------------------------------
+   Rotina de decodificação para Display de 7 Segmentos (Slide 15)
+   ------------------------------------------------------------------------- */
+static uint32_t dec2seg(int digit) {
+    switch(digit) {
+        case 0: return 0x3F;
+        case 1: return 0x06;
+        case 2: return 0x5B;
+        case 3: return 0x4F;
+        case 4: return 0x66;
+        case 5: return 0x6D;
+        case 6: return 0x7D;
+        case 7: return 0x07;
+        case 8: return 0x7F;
+        case 9: return 0x6F;
+        default: return 0x00;
+    }
+}
 
 /* -------------------------------------------------------------------------
    Descobrir automaticamente o dispositivo de teclado USB
@@ -177,30 +210,59 @@ static void *thread_mouse(void *arg) {
     return NULL;
 }
 
+/* -------------------------------------------------------------------------
+   Thread de SWITCHES (Pause Interrupt)
+   ------------------------------------------------------------------------- */
+static void *thread_switches(void *arg) {
+    while (input_running) {
+        if (lw_ptr && lw_ptr != MAP_FAILED) {
+            volatile uint32_t *switch_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x40);
+            /* Se a chave 0 (SW0) estiver levantada, pausa o jogo! */
+            if ((*switch_ptr) & 0x01) {
+                hw_jogo_pausado = 1;
+            } else {
+                hw_jogo_pausado = 0;
+            }
+        }
+        usleep(50000); /* 20Hz polling */
+    }
+    return NULL;
+}
+
 /* =========================================================================
    IMPLEMENTAÇÃO DA API fb_* (framebuffer.h)
    ========================================================================= */
 
 void fb_init(void) {
-    /* --- Pixel buffer VGA --- */
-    mem_fd = open("/dev/mem", O_RDWR | O_SYNC);
-    if (mem_fd < 0) {
-        perror("[DE1-SoC] Erro ao abrir /dev/mem (rode com sudo!)");
-        return;
-    }
-    fb_ptr = (volatile fb_color_t *)mmap(
+    /* --- Mapear Pixel Buffers (Front e Back) --- */
+    fb_buf_front = (volatile fb_color_t *)mmap(
         NULL, FB_SPAN, PROT_READ | PROT_WRITE,
-        MAP_SHARED, mem_fd, FB_PHYS_ADDR
+        MAP_SHARED, mem_fd, FB_PHYS_ADDR_FRONT
     );
-    if (fb_ptr == MAP_FAILED) {
-        perror("[DE1-SoC] Erro no mmap do pixel buffer VGA");
+    fb_buf_back = (volatile fb_color_t *)mmap(
+        NULL, FB_SPAN, PROT_READ | PROT_WRITE,
+        MAP_SHARED, mem_fd, FB_PHYS_ADDR_BACK
+    );
+    
+    if (fb_buf_front == MAP_FAILED || fb_buf_back == MAP_FAILED) {
+        perror("[DE1-SoC] Erro no mmap dos pixel buffers VGA");
         fb_ptr = NULL;
         close(mem_fd);
         mem_fd = -1;
         return;
     }
-    printf("[DE1-SoC] Pixel buffer VGA mapeado em 0x%08X (%d bytes)\n",
-           FB_PHYS_ADDR, (int)FB_SPAN);
+    fb_ptr = fb_buf_back; // Começa desenhando no back buffer oculto
+
+    /* --- Mapear LW Bridge (VGA Ctrl, LEDs, Switches, 7-Seg) --- */
+    lw_ptr = mmap(NULL, LW_BRIDGE_SPAN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, LW_BRIDGE_ADDR);
+
+    /* --- Mapear Character Buffer e Limpar Texto do Linux --- */
+    char_ptr = (volatile char *)mmap(NULL, CHAR_BUF_SPAN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, CHAR_BUF_ADDR);
+    if (char_ptr != MAP_FAILED) {
+        memset((void *)char_ptr, ' ', CHAR_BUF_SPAN);
+    }
+
+    printf("[DE1-SoC] VGA mapeado! Double Buffer ativo.\n");
 
     /* --- Inicializar estado de input --- */
     memset((void *)key_state, 0, sizeof(key_state));
@@ -222,6 +284,12 @@ void fb_init(void) {
     } else {
         perror("[DE1-SoC] Erro ao criar thread do mouse");
     }
+
+    if (pthread_create(&switch_thread, NULL, thread_switches, NULL) == 0) {
+        switch_thread_criada = 1;
+    } else {
+        perror("[DE1-SoC] Erro ao criar thread de switches");
+    }
 }
 
 void fb_shutdown(void) {
@@ -238,11 +306,18 @@ void fb_shutdown(void) {
         pthread_join(mouse_thread, NULL);
         mouse_thread_criada = 0;
     }
-
-    /* Liberar pixel buffer */
-    if (fb_ptr && fb_ptr != MAP_FAILED) {
-        munmap((void *)fb_ptr, FB_SPAN);
+    if (switch_thread_criada) {
+        pthread_cancel(switch_thread);
+        pthread_join(switch_thread, NULL);
+        switch_thread_criada = 0;
     }
+
+    /* Liberar mapeamentos */
+    if (fb_buf_front && fb_buf_front != MAP_FAILED) munmap((void *)fb_buf_front, FB_SPAN);
+    if (fb_buf_back && fb_buf_back != MAP_FAILED) munmap((void *)fb_buf_back, FB_SPAN);
+    if (char_ptr && char_ptr != MAP_FAILED) munmap((void *)char_ptr, CHAR_BUF_SPAN);
+    if (lw_ptr && lw_ptr != MAP_FAILED) munmap((void *)lw_ptr, LW_BRIDGE_SPAN);
+
     if (mem_fd >= 0) {
         close(mem_fd);
     }
@@ -251,22 +326,72 @@ void fb_shutdown(void) {
 
 void fb_clear(fb_color_t color) {
     if (!fb_ptr) return;
-    for (int i = 0; i < FB_WIDTH * FB_HEIGHT; i++) {
-        fb_ptr[i] = color;
+    for (int y = 0; y < FB_HEIGHT; y++) {
+        for (int x = 0; x < FB_WIDTH; x++) {
+            fb_ptr[y * 512 + x] = color;
+        }
     }
 }
 
 void fb_put_pixel(int x, int y, fb_color_t color) {
     if (!fb_ptr) return;
     if (x < 0 || x >= FB_WIDTH || y < 0 || y >= FB_HEIGHT) return;
-    fb_ptr[y * FB_WIDTH + x] = color;
+    fb_ptr[y * 512 + x] = color;
 }
 
 void fb_present(void) {
-    /* Single-buffered: pixels já estão na memória VGA, nada a fazer.
-       Porém, adicionamos um delay para limitar a ~60 FPS e não
-       queimar CPU desnecessariamente no Cortex-A9. */
-    usleep(16000); /* ~16ms ≈ 60 FPS */
+    if (!lw_ptr || lw_ptr == MAP_FAILED) {
+        usleep(16000); /* Fallback */
+        return;
+    }
+
+    /* --- Atualizar Hardware (LEDs e Displays) --- */
+    volatile uint32_t *led_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x0);
+    volatile uint32_t *hex3_0_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x20);
+    volatile uint32_t *hex5_4_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x30);
+
+    /* Acender LEDs proporcional à vida do jogador */
+    uint32_t led_mask = (1 << hw_leds_vida_personagem) - 1;
+    *led_ptr = led_mask;
+
+    /* Atualizar Displays 7-Seg com a quantidade de inimigos */
+    int num = hw_display_inimigos_restantes;
+    if (num < 0) num = 0;
+    if (num > 999999) num = 999999;
+    
+    uint32_t hex3_0 = 0;
+    hex3_0 |= (dec2seg(num % 10)); // HEX0
+    hex3_0 |= (dec2seg((num / 10) % 10) << 8); // HEX1
+    hex3_0 |= (dec2seg((num / 100) % 10) << 16); // HEX2
+    hex3_0 |= (dec2seg((num / 1000) % 10) << 24); // HEX3
+    *hex3_0_ptr = hex3_0;
+    
+    uint32_t hex5_4 = 0;
+    hex5_4 |= (dec2seg((num / 10000) % 10)); // HEX4
+    hex5_4 |= (dec2seg((num / 100000) % 10) << 8); // HEX5
+    *hex5_4_ptr = hex5_4;
+
+    /* --- Sincronizar Double Buffering VGA --- */
+    /* Ponteiro para os registradores de controle do VGA (Offset 0x3020 na LW Bridge) */
+    volatile uint32_t *vga_ctrl = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x3020);
+
+    /* Escrever 1 no registrador Buffer (0x0) inicia o processo de troca (Swap) */
+    vga_ctrl[0] = 1;
+
+    /* Ler o bit 0 do registrador Status (Offset 0xC bytes = index 3 em uint32)
+       Enquanto for 1, a troca ainda não ocorreu (esperando V-Sync) */
+    while ((vga_ctrl[3] & 0x01) != 0) {
+        // block
+    }
+
+    /* Agora o hardware está exibindo o buffer que acabamos de desenhar.
+       O hardware troca os ponteiros internos dele. Nós também precisamos
+       trocar nosso fb_ptr para desenhar no NOVO buffer oculto no próximo frame. */
+    if (fb_ptr == fb_buf_back) {
+        fb_ptr = fb_buf_front;
+    } else {
+        fb_ptr = fb_buf_back;
+    }
 }
 
 int fb_poll_quit(void) {

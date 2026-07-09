@@ -1,27 +1,25 @@
 # Portando para a DE1-SoC
 
-## O que já está pronto pra isso
+## O que j� est� pronto pra isso
 
-O jogo é C17 + SDL2 (no PC) por trás de uma abstração de framebuffer (veja [03-arquitetura.md](03-arquitetura.md)). Toda a lógica de personagens/jogo, por construção, não conhece SDL nem hardware — só chama `fb_*`. Isso significa que, em teoria, só o arquivo `framebuffer_de1soc.c` precisa mudar; o resto do jogo não.
+O jogo � C17 + SDL2 (no PC) por tr�s de uma abstra��o de framebuffer (veja [03-arquitetura.md](03-arquitetura.md)). Toda a l�gica de personagens/jogo, por constru��o, n�o conhece SDL nem hardware � s� chama fb_*.
 
-## Caminho recomendado: compilar direto na placa
+## Compila��o Cruzada (Cross-Compile) do Windows para ARM
 
-A DE1-SoC roda Linux de verdade no HPS (ARM Cortex-A9). **Não vale a pena fazer cross-compile pelo Windows** — é mais simples copiar o código pra placa (via rede/SD/USB) e compilar nativamente lá com `gcc`/`cmake` instalados via `apt`/`opkg`, e:
+O melhor caminho � utilizar a nossa toolchain GCC ARM local (build/arm-gcc/gcc-arm). Para compilar para a placa de dentro do pr�prio Windows usando o ambiente MSYS2:
 
-```bash
-cmake -S . -B build -G Ninja -DUSE_SDL_BACKEND=OFF
-cmake --build build
-./build/metalslug
-```
+`ash
+# Exportar a toolchain para o PATH do bash
+export PATH=/c/Users/gollu/Documents/AntiGravity/2_Demake_Slug/Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1/build/arm-gcc/gcc-arm/bin:$PATH
 
-## O que muda de verdade
+# Compilar com CMake desligando o SDL
+cmake -S . -B build_arm -G Ninja -DCMAKE_TOOLCHAIN_FILE=arm_toolchain.cmake -DUSE_SDL_BACKEND=OFF -DCMAKE_BUILD_TYPE=Release
+cmake --build build_arm
+`
+Ap�s isso, basta transferir o arquivo metalslug da pasta uild_arm para a placa e executar!
 
-- **`fb_key_down`** no backend `de1soc` está stub (retorna sempre 0). Precisa ser implementado lendo os botões/switches físicos da placa (normalmente também via `/dev/mem`, endereço dos registradores de GPIO da FPGA — ainda não mapeado).
-- **Span do `mmap`**: hoje está fixo em `320 * 240 * sizeof(fb_color_t)` bytes a partir de `0x08000000`. Confirmar com quem configurou a ponte FPGA↔HPS que esse é o tamanho certo antes de rodar na placa.
-- **Performance**: Cortex-A9 é bem mais fraco que qualquer PC atual. Sprites grandes ou lógica pesada por frame podem não rodar a 60fps lá mesmo rodando liso no PC — testar na placa com frequência, não só perto do fim do projeto.
-- **Input físico**: se o plano for usar botões/switches da placa em vez de teclado (o que é bem provável), isso é código novo dentro de `framebuffer_de1soc.c`, sem precisar tocar no resto do jogo.
+## Como funciona o Hardware da DE1-SoC
 
-## O que **não** precisa mudar
-
-- Lógica de personagens, movimento, colisão, animação — desde que só usem `include/framebuffer.h`.
-- `main.c` — só troca o backend linkado (`USE_SDL_BACKEND=OFF`), não o código.
+- VGA (Pixel Buffer e Character Buffer): O endere�o real mapeado pelo HPS � 0xC8000000 (Front Buffer) ou 0xC0000000 (Back Buffer). Para limpar o console do Linux da tela, mapeamos e limpamos o Character Buffer em 0xC9000000. Al�m disso, a mem�ria exige um alinhamento de 512 pixels (1024 bytes) por linha.
+- Perif�ricos Nativos (Lightweight Bridge): Usamos /dev/mem no endere�o 0xFF200000 para controlar LEDs, Chaves e Displays de 7-Segmentos, integrando tudo nativamente.
+- Teclado/Mouse USB: O Linux embarcado recebe os inputs f�sicos processados por Threads em C (pthread) que n�o bloqueiam o desenho de telas.

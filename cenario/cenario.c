@@ -1,4 +1,7 @@
 #include "cenario/cenario.h"
+#include "framebuffer/framebuffer.h"
+#include "sprite/sprite.h"
+#include <stddef.h>
 
 void cenario_iniciar(cenario_t *c, const uint16_t *bg, const uint16_t *fg,
                      const uint8_t *colisao, int largura, int altura) {

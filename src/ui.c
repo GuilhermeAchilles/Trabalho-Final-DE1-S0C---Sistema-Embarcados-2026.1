@@ -9,6 +9,7 @@
 #include "ui/ui_barra_normal.h"
 #include "ui/ui_barra_carregado.h"
 #include <math.h>
+#include <stddef.h>
 icone_t icones_mapa[MAX_ICONES];
 void desenhar_linha_horizontal(int x0, int x1, int y, fb_color_t cor) {
     if (x0 > x1) { int tmp = x0; x0 = x1; x1 = tmp; }

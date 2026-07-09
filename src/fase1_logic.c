@@ -99,6 +99,13 @@ int rodar_fase_1(jogador_t *jogador) {
     int fase_entrada = 1;
 
     while (!fb_poll_quit()) {
+        if (hw_jogo_pausado) {
+            /* Se estiver pausado, desenha o último frame e continua congelado */
+            desenhar_cena_fase_1(&cenario, jogador, &tiros, soldados, INIMIGOS_SIMULTANEOS, &tiros_inimigo, 0, 0, 0, 0, FASE1_TOTAL_INIMIGOS - inimigos_mortos, frame_contador, fase_terminando);
+            fb_present();
+            continue;
+        }
+
         frame_contador++;
         int fire_clique = 0, fire_forte_clique = 0;
         

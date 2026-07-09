@@ -41,7 +41,7 @@ O jogo vai rodar em dois lugares muito diferentes:
 - **No PC**, durante o desenvolvimento: sem VGA de verdade, então usamos uma janela SDL2 só pra visualizar.
 - **Na DE1-SoC**, no final: sem janela, sem sistema de janelas — os pixels são escritos direto na memória do controlador de vídeo VGA (320x240, RGB565, endereço físico `0x08000000`).
 
-Pra ninguém precisar reescrever a lógica do jogo (movimento, colisão, personagens) quando trocar de ambiente, toda a parte de "desenhar pixel" e "ler input" fica isolada atrás de uma única interface: [`include/framebuffer/framebuffer.h`](../include/framebuffer/framebuffer.h).
+Pra ninguém precisar reescrever a lógica do jogo (movimento, colisão, personagens) quando trocar de ambiente, toda a parte de "desenhar pixel" e "ler input" fica isolada atrás de uma única interface: [`include/framebuffer/framebuffer.h`](../include/framebuffer/framebuffer.h). Em hardware, a base do VGA Pixel Buffer na DE1-SoC é acessada no endereço `0xC8000000` ou `0xC0000000` (quando Double Buffering está ativo).
 
 ### A API do framebuffer
 
@@ -64,9 +64,9 @@ fb_color_t fb_rgb(uint8_t r, uint8_t g, uint8_t b);  // monta RGB565
 Selecionados em tempo de configuração do CMake, via `USE_SDL_BACKEND` (`ON` por padrão):
 
 - **`framebuffer_sdl.c`** — cria uma janela SDL2 (320x240 escalado 3x), copia o buffer de pixels pra uma `SDL_Texture` a cada `fb_present()`, lê teclado (setas/WASD + Space/Shift/K) via `SDL_GetKeyboardState`, e o mouse via `SDL_GetMouseState` + `SDL_RenderWindowToLogical` (converte coordenada da janela, que está escalada 3x, pra coordenada real do framebuffer 320x240). `FB_KEY_FIRE` aceita `Space` **ou** o botão esquerdo do mouse.
-- **`framebuffer_de1soc.c`** — abre `/dev/mem` e faz `mmap` no endereço físico `0x08000000` (320x240 × 2 bytes = tamanho do buffer). Escreve os pixels direto ali. **`fb_key_down` aqui ainda é um stub que sempre retorna 0**, e **`fb_mouse_pos` retorna sempre o centro da tela** — a placa não tem mouse; falta decidir/mapear o input real de mira e os botões/switches físicos. Só compila em Linux.
+- **`framebuffer_de1soc.c`** — abre `/dev/mem` e faz `mmap` no endereço físico `0xC8000000` (512x240 × 2 bytes = tamanho do buffer). Escreve os pixels direto ali. Lê entradas via USB (`/dev/input/eventX` e `/dev/input/mice`) usando pthreads que executam em paralelo no HPS sem travar o jogo. Além disso, mapeia a **Lightweight Bridge** (`0xFF200000`) para interagir com LEDs e Chaves. Só compila em Linux.
 
-⚠️ O endereço `0x08000000` foi confirmado pelo time como o do controlador VGA da DE1-SoC, mas o *span* exato do mapeamento (quanto de memória mapear) segue o padrão 320×240×2 bytes — vale confirmar com quem configurou a ponte FPGA↔HPS antes de rodar na placa de verdade pela primeira vez.
+⚠️ O endereço `0xC8000000` difere do tradicional `0x08000000` pois no Linux, o HPS acessa os periféricos via a *Heavyweight Bridge* mapeada a partir de `0xC0000000`.
 
 ## Sprites e animação
 
