@@ -30,8 +30,8 @@
 
 static int mem_fd = -1;
 static volatile fb_color_t *fb_buf_front = NULL;
-static volatile fb_color_t *fb_buf_back = NULL;
-static volatile fb_color_t *fb_ptr = NULL; // Active drawing buffer
+static fb_color_t *shadow_buffer = NULL; // Shadow buffer na RAM
+static fb_color_t *fb_ptr = NULL; // Ponteiro ativo aponta pra RAM
 
 static volatile char *char_ptr = NULL;
 static volatile void *lw_ptr = NULL;
@@ -234,24 +234,32 @@ static void *thread_switches(void *arg) {
    ========================================================================= */
 
 void fb_init(void) {
-    /* --- Mapear Pixel Buffers (Front e Back) --- */
+    mem_fd = open("/dev/mem", O_RDWR | O_SYNC);
+    if (mem_fd < 0) {
+        perror("[DE1-SoC] Erro fatal: Nao foi possivel abrir /dev/mem (você é root?)");
+        exit(1);
+    }
+
+    /* --- Mapear Pixel Buffers (Front) --- */
     fb_buf_front = (volatile fb_color_t *)mmap(
         NULL, FB_SPAN, PROT_READ | PROT_WRITE,
         MAP_SHARED, mem_fd, FB_PHYS_ADDR_FRONT
     );
-    fb_buf_back = (volatile fb_color_t *)mmap(
-        NULL, FB_SPAN, PROT_READ | PROT_WRITE,
-        MAP_SHARED, mem_fd, FB_PHYS_ADDR_BACK
-    );
     
-    if (fb_buf_front == MAP_FAILED || fb_buf_back == MAP_FAILED) {
-        perror("[DE1-SoC] Erro no mmap dos pixel buffers VGA");
+    if (fb_buf_front == MAP_FAILED) {
+        perror("[DE1-SoC] Erro no mmap do pixel buffer VGA");
         fb_ptr = NULL;
         close(mem_fd);
         mem_fd = -1;
         return;
     }
-    fb_ptr = fb_buf_back; // Começa desenhando no back buffer oculto
+
+    shadow_buffer = (fb_color_t *)malloc(FB_SPAN);
+    if (!shadow_buffer) {
+        perror("[DE1-SoC] Erro ao alocar shadow buffer na RAM");
+        exit(1);
+    }
+    fb_ptr = shadow_buffer; // Desenha tudo na RAM (super rapido)
 
     /* --- Mapear LW Bridge (VGA Ctrl, LEDs, Switches, 7-Seg) --- */
     lw_ptr = mmap(NULL, LW_BRIDGE_SPAN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, LW_BRIDGE_ADDR);
@@ -314,7 +322,7 @@ void fb_shutdown(void) {
 
     /* Liberar mapeamentos */
     if (fb_buf_front && fb_buf_front != MAP_FAILED) munmap((void *)fb_buf_front, FB_SPAN);
-    if (fb_buf_back && fb_buf_back != MAP_FAILED) munmap((void *)fb_buf_back, FB_SPAN);
+    if (shadow_buffer) free(shadow_buffer);
     if (char_ptr && char_ptr != MAP_FAILED) munmap((void *)char_ptr, CHAR_BUF_SPAN);
     if (lw_ptr && lw_ptr != MAP_FAILED) munmap((void *)lw_ptr, LW_BRIDGE_SPAN);
 
@@ -371,27 +379,14 @@ void fb_present(void) {
     hex5_4 |= (dec2seg((num / 100000) % 10) << 8); // HEX5
     *hex5_4_ptr = hex5_4;
 
-    /* --- Sincronizar Double Buffering VGA --- */
-    /* Ponteiro para os registradores de controle do VGA (Offset 0x3020 na LW Bridge) */
-    volatile uint32_t *vga_ctrl = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x3020);
-
-    /* Escrever 1 no registrador Buffer (0x0) inicia o processo de troca (Swap) */
-    vga_ctrl[0] = 1;
-
-    /* Ler o bit 0 do registrador Status (Offset 0xC bytes = index 3 em uint32)
-       Enquanto for 1, a troca ainda não ocorreu (esperando V-Sync) */
-    while ((vga_ctrl[3] & 0x01) != 0) {
-        // block
+    /* --- Shadow Buffer Copy --- */
+    /* Copiar frame inteiro da RAM para o VGA em burst memory (muito rapido) */
+    if (fb_buf_front && shadow_buffer) {
+        memcpy((void *)fb_buf_front, (void *)shadow_buffer, FB_SPAN);
     }
 
-    /* Agora o hardware está exibindo o buffer que acabamos de desenhar.
-       O hardware troca os ponteiros internos dele. Nós também precisamos
-       trocar nosso fb_ptr para desenhar no NOVO buffer oculto no próximo frame. */
-    if (fb_ptr == fb_buf_back) {
-        fb_ptr = fb_buf_front;
-    } else {
-        fb_ptr = fb_buf_back;
-    }
+    /* Travar framerate em ~60 FPS (16ms) já que removemos o V-Sync via hardware */
+    usleep(16000);
 }
 
 int fb_poll_quit(void) {

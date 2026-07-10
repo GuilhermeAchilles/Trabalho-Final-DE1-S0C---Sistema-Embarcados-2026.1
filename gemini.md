@@ -62,3 +62,21 @@ Dentro de `framebuffer_de1soc.c`, as funções de controle do jogo solicitam o e
                                            - src/ui.c
                                            - src/faseX_logic.c
 ```
+
+---
+
+## 4. Histórico de Portabilidade e Troubleshooting (DE1-SoC)
+
+Durante o processo real de deployment do jogo na placa DE1-SoC, enfrentamos e resolvemos alguns desafios técnicos importantes. Para registro e uso futuro, aqui estão as principais descobertas:
+
+### A) Transferência de Arquivos via Rede (Netcat TCP)
+- **Problema:** Transferir um binário de 3.5MB pelo cabo Serial (COM) causava corrompimento de dados e travamentos, e a placa inicialmente não recebia IP via DHCP no laboratório.
+- **Solução:** Assumimos um IP manual livre da rede (`164.41.179.80`) via porta Serial. Com a rede ativa, usamos o comando **Netcat** padrão do OpenBSD na placa (`nc -l 12345 > jogo_metalslug`) e um script Python de Socket TCP no host Windows para enviar o arquivo. Essa abordagem dribla Firewalls do Windows e transfere o binário quase instantaneamente e de forma 100% íntegra.
+
+### B) Bug de Tela Preta Silenciosa (Mapeamento de Memória)
+- **Problema:** A flag `USE_SDL_BACKEND=OFF` foi ativada corretamente para forçar a renderização VGA nativa, mas o jogo fechava instantaneamente sem exibir erros.
+- **Solução:** Identificou-se que a rotina `fb_init()` do `framebuffer_de1soc.c` tentava realizar o `mmap` do Pixel Buffer, mas esquecia de chamar `open("/dev/mem", O_RDWR | O_SYNC)` antes. O ponteiro de arquivo ficava como `-1`, causando falha silenciosa. A abertura do descritor de arquivo de memória foi adicionada.
+
+### C) Conflito de Versões da Biblioteca C (GLIBC)
+- **Problema:** Ao rodar o binário ARM final na DE1-SoC, ocorreu o erro `/lib/arm-linux-gnueabihf/libc.so.6: version 'GLIBC_2.28' not found`.
+- **Solução:** A placa roda uma distribuição Linux antiga com uma versão legada do GLIBC, enquanto o cross-compiler GCC no Windows linkava com versões mais recentes. A solução definitiva, sem precisar degradar o compilador do host, foi adicionar a flag **`-static`** no `CMakeLists.txt` (`target_link_options(metalslug PRIVATE -static)`). Isso empacota todas as dependências C diretamente no executável, garantindo compatibilidade universal com qualquer Linux embarcado.

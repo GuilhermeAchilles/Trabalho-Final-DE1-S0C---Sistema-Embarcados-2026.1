@@ -1,0 +1,63 @@
+#include "ataques/tiros/tiro.h"
+
+void tiros_iniciar(tiros_t *grupo) {
+    for (int i = 0; i < TIRO_MAX; i++) {
+        grupo->tiros[i].ativo = 0;
+    }
+}
+
+void tiros_disparar(tiros_t *grupo, int x, int y, float dx, float dy, const tipo_tiro_t *tipo) {
+    for (int i = 0; i < TIRO_MAX; i++) {
+        if (!grupo->tiros[i].ativo) {
+            grupo->tiros[i].x = (float)x;
+            grupo->tiros[i].y = (float)y;
+            grupo->tiros[i].dx = dx;
+            grupo->tiros[i].dy = dy;
+            grupo->tiros[i].tipo = tipo;
+            grupo->tiros[i].vida = TIRO_VIDA_FRAMES;
+            grupo->tiros[i].ativo = 1;
+            return;
+        }
+    }
+}
+
+void tiros_atualizar(tiros_t *grupo) {
+    for (int i = 0; i < TIRO_MAX; i++) {
+        tiro_t *t = &grupo->tiros[i];
+
+        if (!t->ativo) continue;
+
+        t->x += t->tipo->velocidade * t->dx;
+        t->y += t->tipo->velocidade * t->dy;
+
+        if (--t->vida <= 0) {
+            t->ativo = 0;
+        }
+    }
+}
+
+void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y) {
+    for (int i = 0; i < TIRO_MAX; i++) {
+        const tiro_t *t = &grupo->tiros[i];
+        if (!t->ativo) continue;
+
+        sprite_draw(t->tipo->sprite, (int)t->x - camera_x, (int)t->y - camera_y, 0);
+    }
+}
+
+int tiros_colidir_com(tiros_t *grupo, retangulo_t alvo) {
+    int dano_total = 0;
+
+    for (int i = 0; i < TIRO_MAX; i++) {
+        tiro_t *t = &grupo->tiros[i];
+        if (!t->ativo) continue;
+
+        retangulo_t retangulo_tiro = { (int)t->x, (int)t->y, t->tipo->sprite->width, t->tipo->sprite->height };
+        if (colisao_retangulos(retangulo_tiro, alvo)) {
+            t->ativo = 0;
+            dano_total += t->tipo->dano;
+        }
+    }
+
+    return dano_total;
+}

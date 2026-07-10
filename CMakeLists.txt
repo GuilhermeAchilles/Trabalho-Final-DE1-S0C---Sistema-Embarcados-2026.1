@@ -8,7 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # ON no PC (janela SDL de preview) / OFF na DE1-SoC (escreve direto no framebuffer VGA)
-option(USE_SDL_BACKEND "Use SDL2 window as the framebuffer preview backend" ON)
+option(USE_SDL_BACKEND "Use SDL2 window as the framebuffer preview backend" OFF)
 
 add_executable(metalslug
     src/main.c
@@ -52,4 +52,5 @@ if(USE_SDL_BACKEND)
 else()
     target_sources(metalslug PRIVATE framebuffer/framebuffer_de1soc.c)
     target_link_libraries(metalslug PRIVATE pthread m)
+    target_link_options(metalslug PRIVATE -static)
 endif()
