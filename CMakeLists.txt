@@ -16,8 +16,14 @@ add_executable(metalslug
     src/ui.c
     src/hardware_state.c
     src/fase1_logic.c
+    src/fase1_5_logic.c
+    cenario/fase1_5/fase1_5_dados.c
     src/fase2_logic.c
     src/fase3_logic.c
+    inimigos/spider_jockey/spider_jockey.c
+    inimigos/copycat/copycat.c
+    inimigos/tank/tank.c
+    inimigos/goomba/goomba.c
     sprite/sprite.c
     animacao/animacao.c
     ataques/tiros/tiro.c

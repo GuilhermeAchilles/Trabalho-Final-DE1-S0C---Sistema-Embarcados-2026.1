@@ -71,11 +71,14 @@ typedef struct {
     int rastro_idx;
 
     int dano_piscar_frames;
+    int timer_invulnerabilidade;
+    int knockback_vx;
 } jogador_t;
 
 void jogador_iniciar(jogador_t *j, int spawn_x, int spawn_y);
 retangulo_t jogador_hitbox(const jogador_t *j);
 void jogador_receber_dano(jogador_t *j, int dano);
+void jogador_receber_dano_knockback(jogador_t *j, int dano, int origem_x);
 void jogador_centro(const jogador_t *j, int *cx, int *cy);
 void jogador_atualizar_entrada_tiro(jogador_t *j, int *fire_clique, int *fire_forte_clique);
 void jogador_atualizar(jogador_t *j, const cenario_t *c, int cutscene_mode);

@@ -39,9 +39,26 @@ void tiros_atualizar(tiros_t *grupo) {
 void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y) {
     for (int i = 0; i < TIRO_MAX; i++) {
         const tiro_t *t = &grupo->tiros[i];
-        if (!t->ativo) continue;
+        if (!t->ativo || !t->tipo || !t->tipo->sprite) continue;
+        
+        int draw_x = (int)t->x - camera_x;
+        int draw_y = (int)t->y - camera_y;
+        int espelhado = (t->dx < 0.0f) ? 1 : 0;
 
-        sprite_draw(t->tipo->sprite, (int)t->x - camera_x, (int)t->y - camera_y, 0);
+        sprite_draw(t->tipo->sprite, draw_x, draw_y, espelhado);
+    }
+}
+
+void tiros_desenhar_tint(const tiros_t *grupo, int camera_x, int camera_y, uint16_t tint_cor, float mix) {
+    for (int i = 0; i < TIRO_MAX; i++) {
+        const tiro_t *t = &grupo->tiros[i];
+        if (!t->ativo || !t->tipo || !t->tipo->sprite) continue;
+        
+        int draw_x = (int)t->x - camera_x;
+        int draw_y = (int)t->y - camera_y;
+        int espelhado = (t->dx < 0.0f) ? 1 : 0;
+
+        sprite_draw_tint(t->tipo->sprite, draw_x, draw_y, espelhado, tint_cor, mix);
     }
 }
 

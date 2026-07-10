@@ -39,6 +39,8 @@ static void jogador_reposicionar_no_spawn(jogador_t *j) {
     for (int i=0; i<RASTRO_MAX; i++) j->rastros[i].vida = 0;
     j->rastro_idx = 0;
     j->dano_piscar_frames = 0;
+    j->timer_invulnerabilidade = 0;
+    j->knockback_vx = 0;
 }
 
 void jogador_iniciar(jogador_t *j, int spawn_x, int spawn_y) {
@@ -76,11 +78,24 @@ retangulo_t jogador_hitbox(const jogador_t *j) {
 }
 
 void jogador_receber_dano(jogador_t *j, int dano) {
+    if (j->timer_invulnerabilidade > 0) return;
     if (dano > 0) {
         j->vida -= dano;
         j->dano_piscar_frames = 15;
     }
     if (j->vida < 0) j->vida = 0;
+}
+
+void jogador_receber_dano_knockback(jogador_t *j, int dano, int origem_x) {
+    if (j->timer_invulnerabilidade > 0) return;
+    jogador_receber_dano(j, dano);
+    
+    // Ignora inputs e aplica knockback por 0.5 seg (30 frames)
+    j->timer_invulnerabilidade = 30;
+    
+    // Angulo de 45 graus pra tras (reduzido drasticamente)
+    j->vel_y = -3.0f; 
+    j->knockback_vx = (j->px < origem_x) ? -1 : 1;
 }
 
 void jogador_centro(const jogador_t *j, int *cx, int *cy) {
@@ -132,12 +147,18 @@ static int chao_sob_jogador(const cenario_t *c, int x, int y0, int y1, int drop_
    lateral por si so). */
 static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_through, int cutscene_mode) {
     int passo = 0;
-    int vel = j->buff_velocidade > 0 ? PLAYER_SPEED * 2 : PLAYER_SPEED;
-    if (cutscene_mode) {
-        passo += vel; j->direcao = 1;
+    
+    if (j->timer_invulnerabilidade > 0) {
+        j->timer_invulnerabilidade--;
+        passo = j->knockback_vx;
     } else {
-        if (fb_key_down(FB_KEY_LEFT))  { passo -= vel; j->direcao = -1; }
-        if (fb_key_down(FB_KEY_RIGHT)) { passo += vel; j->direcao = 1;  }
+        int vel = j->buff_velocidade > 0 ? PLAYER_SPEED * 2 : PLAYER_SPEED;
+        if (cutscene_mode) {
+            passo += vel; j->direcao = 1;
+        } else {
+            if (fb_key_down(FB_KEY_LEFT))  { passo -= vel; j->direcao = -1; }
+            if (fb_key_down(FB_KEY_RIGHT)) { passo += vel; j->direcao = 1;  }
+        }
     }
     if (passo == 0) return 0;
 

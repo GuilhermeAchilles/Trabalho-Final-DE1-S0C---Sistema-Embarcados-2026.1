@@ -88,6 +88,7 @@ int fb_key_down(fb_key_t key) {
         }
         case FB_KEY_JUMP:   return keys[SDL_SCANCODE_SPACE];
         case FB_KEY_ACTION: return keys[SDL_SCANCODE_K];
+        case FB_KEY_DEBUG_PASS: return keys[SDL_SCANCODE_SEMICOLON] || keys[SDL_SCANCODE_APOSTROPHE] || keys[SDL_SCANCODE_BACKSLASH] || keys[SDL_SCANCODE_C];
     }
     return 0;
 }
