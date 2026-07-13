@@ -214,6 +214,11 @@ int rodar_fase_1(jogador_t *jogador) {
             fase_terminando = 1;
         }
 
+        if (fase_terminando && jogador->px <= 0) {
+            venceu = 2; // Easter Egg: vai para Fase 1.5
+            break;
+        }
+
         if (fase_terminando && jogador->px > cenario.largura - 50) {
             venceu = 1;
             break;

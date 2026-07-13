@@ -110,7 +110,7 @@ int rodar_fase_3(jogador_t *jogador) {
 
     while (!fb_poll_quit()) {
         if (hw_jogo_pausado) {
-            desenhar_cena_fase_1(&cenario, jogador, &tiros, soldados, INIMIGOS_SIMULTANEOS, &tiros_inimigo, 0, 0, 0, 0, FASE3_TOTAL_INIMIGOS - inimigos_mortos, frame_contador, fase_terminando);
+            desenhar_cena_fase_3(&cenario, jogador, &tiros, &tank, goombas, soldados, &tiros_inimigos, frame_contador, 0, 0, 0, 0, FASE3_TOTAL_INIMIGOS - (goombas_mortos + soldados_mortos), fase_terminando);
             fb_present();
             continue;
         }
@@ -199,13 +199,6 @@ int rodar_fase_3(jogador_t *jogador) {
                 goombas[i].vx = 0.0f;
             }
             
-            int inativo_agora = (goombas[i].estado == GOOMBA_INATIVO);
-            
-            if (esmagado_antes && inativo_agora) {
-                goombas_mortos++;
-                inimigos_restantes = FASE3_TOTAL_INIMIGOS - (goombas_mortos + soldados_mortos);
-            }
-            
             if (goombas[i].estado == GOOMBA_ANDANDO || goombas[i].estado == GOOMBA_VOANDO || goombas[i].estado == GOOMBA_PULANDO) {
                 retangulo_t h_g = goomba_hitbox(&goombas[i]);
                 retangulo_t h_j = jogador_hitbox(jogador);
@@ -213,6 +206,8 @@ int rodar_fase_3(jogador_t *jogador) {
                 if (colisao_retangulos(h_j, h_g)) {
                     if (jogador->vel_y > 0 && h_j.y + h_j.altura - 10 < h_g.y + h_g.altura/2 && (goombas[i].estado == GOOMBA_ANDANDO || goombas[i].estado == GOOMBA_PULANDO)) {
                         goomba_esmagar(&goombas[i]);
+                        goombas_mortos++;
+                        inimigos_restantes = FASE3_TOTAL_INIMIGOS - (goombas_mortos + soldados_mortos);
                     } else {
                         if (goombas[i].estado == GOOMBA_VOANDO) {
                             jogador_receber_dano_knockback(jogador, 1, goombas[i].x);

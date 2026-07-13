@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <time.h>
 #include "hardware/hardware_state.h"
+#include <stdlib.h>
 
 /* =========================================================================
    PIXEL BUFFER VGA — mapeamento de memória direto no hardware

@@ -127,7 +127,7 @@ int rodar_fase_2(jogador_t *jogador) {
 
     while (!fb_poll_quit()) {
         if (hw_jogo_pausado) {
-            desenhar_cena_fase_1(&cenario, jogador, &tiros, soldados, INIMIGOS_SIMULTANEOS, &tiros_inimigo, 0, 0, 0, 0, FASE2_TOTAL_INIMIGOS - inimigos_mortos, frame_contador, fase_terminando);
+            desenhar_cena_fase_2(&cenario, jogador, &tiros, slots, SJ_SIMULTANEOS, 0, 0, 0, 0, FASE2_TOTAL_INIMIGOS - inimigos_mortos, frame_contador, fase_terminando);
             fb_present();
             continue;
         }

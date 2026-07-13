@@ -41,9 +41,12 @@ int main(int argc, char *argv[]) {
 
             int passou = rodar_fase_1(&jogador);
 
-            if (passou) {
+            if (passou == 1) {
                 printf("Parabens! Voce sobreviveu a Fase 1 e matou 50 soldados!\n");
-                estado_atual = ESTADO_FASE1_5; 
+                estado_atual = ESTADO_FASE2; 
+            } else if (passou == 2) {
+                printf("Easter Egg Encontrado! Entrando na Fase 1.5!\n");
+                estado_atual = ESTADO_FASE1_5;
             } else {
                 printf("Game Over! Voce morreu na Fase 1.\n");
                 estado_atual = ESTADO_GAME_OVER;
@@ -55,8 +58,8 @@ int main(int argc, char *argv[]) {
             int passou = rodar_fase_1_5(&jogador);
 
             if (passou) {
-                printf("Parabens! Voce venceu a Fase 1.5 e o Boss Copycat!\n");
-                estado_atual = ESTADO_FASE2; 
+                printf("Parabens! Voce venceu a Fase 1.5 e o Boss Copycat! Pulando para o final!\n");
+                estado_atual = ESTADO_FINAL; 
             } else {
                 printf("Game Over! Voce morreu na Fase 1.5.\n");
                 estado_atual = ESTADO_GAME_OVER;
