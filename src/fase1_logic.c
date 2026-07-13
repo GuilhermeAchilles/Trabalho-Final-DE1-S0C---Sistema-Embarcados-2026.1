@@ -94,6 +94,7 @@ int rodar_fase_1(jogador_t *jogador) {
     }
 
     int frame_contador = 0;
+    int debug_pass_last = fb_key_down(FB_KEY_DEBUG_PASS);
     int venceu = 0;
     int fase_terminando = 0;
     int fase_entrada = 1;
@@ -107,6 +108,11 @@ int rodar_fase_1(jogador_t *jogador) {
         }
 
         frame_contador++;
+        
+        int debug_pass_curr = fb_key_down(FB_KEY_DEBUG_PASS);
+        if (debug_pass_curr && !debug_pass_last) return 1;
+        debug_pass_last = debug_pass_curr;
+
         int fire_clique = 0, fire_forte_clique = 0;
         
         if (!fase_entrada) {

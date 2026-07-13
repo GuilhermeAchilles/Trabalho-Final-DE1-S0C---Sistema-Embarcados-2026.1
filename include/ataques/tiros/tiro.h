@@ -41,6 +41,8 @@ void tiros_atualizar(tiros_t *grupo);
 /* Desenha os tiros deslocados pela camera (camera_x/y = canto da tela no mundo). */
 void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y);
 
+void tiros_desenhar_tint(const tiros_t *grupo, int camera_x, int camera_y, uint16_t tint_cor, float mix);
+
 /* Desativa todo tiro ativo que colidir com alvo e retorna quantos acertaram. */
 int tiros_colidir_com(tiros_t *grupo, retangulo_t alvo);
 

@@ -5,6 +5,7 @@
 #include "personagem/jogador.h"
 #include "ui/ui.h"
 #include "cenario/fases.h"
+#include "cenario/fase1_5/fase1_5.h"
 
 #include "menu/menu.h"
 #include "game_over/game_over.h"
@@ -13,6 +14,7 @@
 typedef enum {
     ESTADO_MENU,
     ESTADO_FASE1,
+    ESTADO_FASE1_5,
     ESTADO_FASE2,
     ESTADO_FASE3,
     ESTADO_FINAL,
@@ -40,10 +42,23 @@ int main(int argc, char *argv[]) {
             int passou = rodar_fase_1(&jogador);
 
             if (passou) {
-                printf("Parabens! Voce sobreviveu a Fase 1 e matou 10 soldados!\n");
-                estado_atual = ESTADO_FASE2; 
+                printf("Parabens! Voce sobreviveu a Fase 1 e matou 50 soldados!\n");
+                estado_atual = ESTADO_FASE1_5; 
             } else {
                 printf("Game Over! Voce morreu na Fase 1.\n");
+                estado_atual = ESTADO_GAME_OVER;
+            }
+        } else if (estado_atual == ESTADO_FASE1_5) {
+            jogador_t jogador;
+            jogador_iniciar(&jogador, -30, 160);
+
+            int passou = rodar_fase_1_5(&jogador);
+
+            if (passou) {
+                printf("Parabens! Voce venceu a Fase 1.5 e o Boss Copycat!\n");
+                estado_atual = ESTADO_FASE2; 
+            } else {
+                printf("Game Over! Voce morreu na Fase 1.5.\n");
                 estado_atual = ESTADO_GAME_OVER;
             }
         } else if (estado_atual == ESTADO_FASE2) {

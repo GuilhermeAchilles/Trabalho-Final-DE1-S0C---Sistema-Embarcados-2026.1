@@ -15,3 +15,7 @@ Demake_Metal_Slug_De1Soc-main/
 build_arm/
 slides_prof/
 *.pdf
+novos/
+GEMINI.md
+CLAUDE.md
+.gemini/

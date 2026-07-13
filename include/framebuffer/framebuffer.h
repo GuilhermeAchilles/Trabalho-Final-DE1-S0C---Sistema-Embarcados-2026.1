@@ -20,7 +20,8 @@ typedef enum {
     FB_KEY_FIRE,       /* atirar (tiro simples) */
     FB_KEY_FIRE_FORTE, /* tiro forte/carregado - botao direito do mouse */
     FB_KEY_JUMP,   /* pulo */
-    FB_KEY_ACTION  /* botao de acao secundario (usado hoje so pra testar a animacao de morrer) */
+    FB_KEY_ACTION, /* botao de acao secundario (usado hoje so pra testar a animacao de morrer) */
+    FB_KEY_DEBUG_PASS /* tecla 'ç' para pular de fase */
 } fb_key_t;
 
 void fb_init(void);
