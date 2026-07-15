@@ -46,8 +46,15 @@ O jogo utiliza os periféricos nativos da placa (VGA, Displays de 7-Segmentos, L
    cmake --build build_arm
    ```
 
-### 2. Transferindo para a Placa via Ethernet (TCP)
-Devido ao tamanho do executável, não use cabo Serial para a transferência (pode corromper). Use a porta Ethernet:
+### 2. Acessando a Placa via Cabo Serial (PuTTY)
+Antes de transferir via rede, você precisa entrar no terminal da placa para saber qual IP ela recebeu.
+1. Instale o **Driver USB-to-UART** (FTDI ou Prolific) para que o Windows reconheça o cabo Console da placa.
+2. Descubra a porta COM no *Gerenciador de Dispositivos* (ex: `COM3`).
+3. Abra o **PuTTY**, selecione conexão do tipo **Serial**, insira sua porta COM e defina o *Speed (Baud rate)* como `115200`.
+4. Clique em *Open*, faça login como `root` e rode o comando `ifconfig` para anotar o IP da placa (ex: `164.41.179.50`).
+
+### 3. Transferindo o Jogo via Ethernet (TCP)
+Devido ao tamanho do executável, **não use o cabo Serial para a transferência de arquivos** (é muito lento e corrompe o binário). Use a rede Ethernet:
 
 1. **Na placa DE1-SoC (Receptor):**
    Abra a porta e aguarde o arquivo ficar escutando:
