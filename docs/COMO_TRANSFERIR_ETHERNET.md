@@ -10,7 +10,7 @@ Abaixo está o passo a passo completo de como realizar essa transferência do PC
 
 A DE1-SoC precisa estar conectada na rede e possuir um IP acessível. Nos nossos testes práticos, assumimos que a placa obteve ou foi configurada com o IP estático `164.41.179.80`.
 
-1. Conecte-se ao terminal da placa via PuTTY (Serial COM).
+1. Instale o Driver USB-to-UART (FTDI/Prolific) e conecte-se ao terminal da placa via PuTTY (Serial COM).
 2. Para preparar a placa para receber o arquivo, vamos abrir a porta `12345` (ou outra de sua escolha) usando a ferramenta nativa `nc` (Netcat). 
 3. O comando abaixo escuta (`-l`) a porta e redireciona todo o tráfego recebido para um arquivo binário local:
 
@@ -61,3 +61,4 @@ Agora, basta dar permissão de execução e rodar o seu jogo!
 - **Arquivo com 0 Bytes:** A transferência falhou, provavelmente porque a porta estava ocupada ou o Python acusou erro de conexão (Connection Refused). Use uma porta TCP diferente e garanta que o `nc` ficou travado esperando.
 - **Python - Connection Refused:** O IP está errado, o cabo de rede está solto, ou você tentou enviar o arquivo **antes** de colocar o `nc` para rodar na placa. Sempre rode o comando da placa primeiro.
 - **Segmentation Fault / Erro imediato:** Se o arquivo não tiver 0 bytes mas der erro instantâneo, você pode ter transferido um binário compilado incorretamente (ex: `.sof` no lugar do `metalslug`, ou esqueceu o `chmod +x`).
+

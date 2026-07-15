@@ -20,6 +20,7 @@ Após isso, basta transferir o arquivo metalslug da pasta uild_arm para a placa 
 
 ## Como funciona o Hardware da DE1-SoC
 
-- VGA (Pixel Buffer e Character Buffer): O endereço real mapeado pelo HPS é 0xC8000000 (Front Buffer) ou 0xC0000000 (Back Buffer). Para limpar o console do Linux da tela, mapeamos e limpamos o Character Buffer em 0xC9000000. Além disso, a memória exige um alinhamento de 512 pixels (1024 bytes) por linha.
+- VGA (Pixel Buffer e Character Buffer): O endereço real mapeado pelo HPS é 0xC8000000. Alocamos um Shadow Buffer na RAM e copiamos para ele usando memcpy para evitar tearing. Para limpar o console do Linux da tela, mapeamos e limpamos o Character Buffer em 0xC9000000. Além disso, a memória exige um alinhamento de 512 pixels (1024 bytes) por linha.
 - Periféricos Nativos (Lightweight Bridge): Usamos /dev/mem no endereço 0xFF200000 para controlar LEDs, Chaves e Displays de 7-Segmentos, integrando tudo nativamente.
 - Teclado/Mouse USB: O Linux embarcado recebe os inputs físicos processados por Threads em C (pthread) que não bloqueiam o desenho de telas.
+

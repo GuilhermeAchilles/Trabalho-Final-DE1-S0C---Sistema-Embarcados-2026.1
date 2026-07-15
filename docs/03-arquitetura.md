@@ -164,3 +164,4 @@ endif()
 No Windows, o SDL2 precisa interceptar o `WinMain` do sistema — pra isso, o pré-processador troca todo `main` por `SDL_main` no seu código. Isso é **só do Windows**: no Linux (DE1-SoC) essa definição não existe, por isso está dentro de `if(WIN32)`. Sem esse guard, o link quebraria no Linux (procuraria por um `main` que não existe, já que foi renomeado).
 
 Efeito prático: ao debugar com gdb no Windows, colocar breakpoint na função `main` por *nome* é ambíguo (existe um `main` de verdade vindo do CRT do MinGW, que só chama o nosso `SDL_main`). Prefira breakpoint por **linha do arquivo** (clicando na margem do editor).
+
