@@ -1,3 +1,4 @@
+/* Utilidade: Mantem as globais do sistema FPGA (vida no led, monstros no 7-seg) */
 #include "hardware/hardware_state.h"
 
 int hw_display_inimigos_restantes = 0;

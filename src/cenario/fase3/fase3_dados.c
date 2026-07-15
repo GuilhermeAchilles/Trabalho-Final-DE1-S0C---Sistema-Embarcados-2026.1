@@ -1,8 +1,6 @@
+/* Utilidade: Matriz de pixels da imagem em RGB565 da Fase 3 (Boss) */
 #include "cenario/fase3/fase3.h"
-/* =====================================================
- * FASE3_rgb565.c ? Cenario em RGB565
- * Resolucao final: 422x240
- * ===================================================== */
+/* Matriz de pixels da imagem em RGB565 (Gerado automaticamente) */
 
 #include <stdint.h>
 
@@ -9510,4 +9508,5 @@ const uint16_t fase3_bg[101280] = {
     0x5104, 0x4904, 0x5104, 0x48E3, 0x30A2, 0x38C3, 0x40C3, 0x38C3, 0x38C3, 0x38C3, 0x38C3, 0x40C3, 0x30C3, 0x48E4, 0x6125, 0x48C3,
     0x38C3, 0x40C3, 0x38C3, 0x38C3, 0x38C3, 0x30C3, 0x40C3, 0x38C3, 0x38C3, 0x38C3, 0x38C3, 0x38C3, 0x40C3, 0x38C3, 0x38C3, 0x38C3
 };
+
 

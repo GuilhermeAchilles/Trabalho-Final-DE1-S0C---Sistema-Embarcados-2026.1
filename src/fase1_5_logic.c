@@ -1,3 +1,4 @@
+/* Utilidade: Cutscene interativa e mecanicas da Fase 1.5 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -18,9 +19,7 @@ static void desenhar_cena_fase_1_5(const cenario_t *c, const jogador_t *j,
                                    int inimigos_restantes, int frame_contador,
                                    int fase_terminando) {
     cenario_desenhar_bg(c);
-    
-    // Nao ha icones dropados na fase do copycat (boss battle)
-    
+    /* Nao ha icones dropados na fase do boss */
     jogador_desenhar(j, c->camera_x, c->camera_y);
     tiros_desenhar(tiros_jogador, c->camera_x, c->camera_y);
     tiros_desenhar_tint(tiros_boss, c->camera_x, c->camera_y, fb_rgb(148, 0, 211), 0.6f);
@@ -57,7 +56,7 @@ int rodar_fase_1_5(jogador_t *jogador) {
     tiros_iniciar(&tiros_boss);
 
     copycat_t copycat;
-    // Spawna o boss em um lugar diferente do heroi (ex: no lado direito)
+    /* Spawna o boss no lado direito da tela */
     copycat_iniciar(&copycat, 250, 160);
 
     int frame_contador = 0;
@@ -66,9 +65,8 @@ int rodar_fase_1_5(jogador_t *jogador) {
     int fase_terminando = 0;
     int fase_entrada = 1;
 
-    // Resetar posicoes 
-    jogador->px = 50; 
-    // y ja vem da inicializacao ou mantem se nao for muito ruim
+    /* Define a posicao inicial do jogador */
+    jogador->px = 50;
 
     while (!fb_poll_quit()) {
         int debug_pass_curr = fb_key_down(FB_KEY_DEBUG_PASS);
@@ -82,7 +80,7 @@ int rodar_fase_1_5(jogador_t *jogador) {
             jogador_atualizar_entrada_tiro(jogador, &fire_clique, &fire_forte_clique);
         }
 
-        // Checagem de colisao com a direita relaxada quando o boss morre
+        /* Verifica se o jogador chegou no final da tela apos derrotar o boss */
         if (fase_terminando && jogador->px > cenario.largura - 50) {
             venceu = 1;
             break;
@@ -122,21 +120,19 @@ int rodar_fase_1_5(jogador_t *jogador) {
             jogador_processar_tiro(jogador, &tiros_jogador, fire_clique, fire_forte_clique,
                                    centro_mundo_x, centro_mundo_y, dx, dy);
             
-            // Registra os inputs/estados do jogador no boss
+            /* Registra os comandos do jogador para o copycat imitar depois */
             copycat_registrar_estado_jogador(&copycat, jogador, fire_clique, fire_forte_clique, dx, dy);
         }
         tiros_atualizar(&tiros_jogador);
 
-        // --- Atualiza Boss ---
+        /* Atualiza Boss */
         copycat_atualizar(&copycat);
         if (!copycat.morto && copycat.history_count == COPYCAT_DELAY) {
-            // Se o history index atual tem tiro, dispara o tiro inimigo!
-            // Para pegar o estado que acabou de ser lido em copycat_atualizar:
-            // Ele leu o oldest. Se o oldest tinha clique, atira.
+            /* Se o jogador atirou no passado, o boss atira agora */
             int idx = copycat.history_index;
             copycat_state_t st = copycat.history[idx];
             
-            // Simula o centro do boss
+            /* Calcula o centro do boss para a origem do tiro */
             int b_cx = copycat.px + (copycat.frame_atual ? copycat.frame_atual->width / 2 : 0);
             int b_cy = copycat.py + (copycat.frame_atual ? copycat.frame_atual->height / 2 : 0);
 
@@ -147,25 +143,24 @@ int rodar_fase_1_5(jogador_t *jogador) {
         }
         tiros_atualizar(&tiros_boss);
 
-        // --- Colisoes ---
-        // Tiros do jogador no Boss
+        /* Colisoes*/
+        /* Tiros do jogador no Boss */
         if (!copycat.morto) {
             int dano_boss = tiros_colidir_com(&tiros_jogador, copycat_hitbox(&copycat));
             int dano_real = dano_boss * (jogador->buff_instakill > 0 ? 3 : 1);
             copycat_receber_dano(&copycat, dano_real);
         }
 
-        // Tiros do Boss no Jogador
+        /* Tiros do Boss no Jogador */
         int dano_hero = tiros_colidir_com(&tiros_boss, jogador_hitbox(jogador));
         jogador_receber_dano(jogador, dano_hero);
 
         if (copycat.morto) {
             fase_terminando = 1;
-            // Desativa colisão da direita para o herói poder sair (passar do limite da tela)
-            // Ou melhor, o jogador só precisa passar do limite. Isso já está sendo verificado na checagem do jogador->px > cenario.largura - 50.
+            /* O jogador pode passar pela borda direita da tela apos a morte do boss */
         }
 
-        // Display
+        /* Atualiza hardware e desenha tela */
         int inimigos_restantes = copycat.morto ? 0 : 1;
         hw_display_inimigos_restantes = inimigos_restantes;
         hw_leds_vida_personagem = jogador->vida;
@@ -182,3 +177,4 @@ int rodar_fase_1_5(jogador_t *jogador) {
 
     return venceu;
 }
+

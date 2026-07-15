@@ -1,3 +1,5 @@
+/* Sprite: UI Barra de tiro normal */
+
 #ifndef SPRITES_UI_BARRA_NORMAL_H
 #define SPRITES_UI_BARRA_NORMAL_H
 

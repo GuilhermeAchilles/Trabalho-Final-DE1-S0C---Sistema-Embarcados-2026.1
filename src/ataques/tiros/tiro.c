@@ -1,11 +1,14 @@
+/* Utilidade: Gerenciador do pool de projeteis, atualizando movimento e colisao de tiros */
 #include "ataques/tiros/tiro.h"
 
+/* Zera e inativa todos os tiros do pool no comeco do jogo */
 void tiros_iniciar(tiros_t *grupo) {
     for (int i = 0; i < TIRO_MAX; i++) {
         grupo->tiros[i].ativo = 0;
     }
 }
 
+/* Procura um slot livre no vetor de tiros e dispara um novo projetil */
 void tiros_disparar(tiros_t *grupo, int x, int y, float dx, float dy, const tipo_tiro_t *tipo) {
     for (int i = 0; i < TIRO_MAX; i++) {
         if (!grupo->tiros[i].ativo) {
@@ -21,6 +24,7 @@ void tiros_disparar(tiros_t *grupo, int x, int y, float dx, float dy, const tipo
     }
 }
 
+/* Move todos os tiros pela tela e subtrai o tempo de vida de cada um. Morrem quando acaba a vida. */
 void tiros_atualizar(tiros_t *grupo) {
     for (int i = 0; i < TIRO_MAX; i++) {
         tiro_t *t = &grupo->tiros[i];
@@ -36,6 +40,7 @@ void tiros_atualizar(tiros_t *grupo) {
     }
 }
 
+/* Percorre os tiros ativos e os desenha levando em conta a posicao da camera */
 void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y) {
     for (int i = 0; i < TIRO_MAX; i++) {
         const tiro_t *t = &grupo->tiros[i];
@@ -49,6 +54,7 @@ void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y) {
     }
 }
 
+/* Igual ao desenho comum, mas aplica um filtro de cor (tint). O boss usa tiros do heroi mas com cor roxa! */
 void tiros_desenhar_tint(const tiros_t *grupo, int camera_x, int camera_y, uint16_t tint_cor, float mix) {
     for (int i = 0; i < TIRO_MAX; i++) {
         const tiro_t *t = &grupo->tiros[i];
@@ -62,6 +68,7 @@ void tiros_desenhar_tint(const tiros_t *grupo, int camera_x, int camera_y, uint1
     }
 }
 
+/* Verifica se algum tiro colidiu com um alvo. Se bater, destrói o tiro e soma o dano pro retorno. */
 int tiros_colidir_com(tiros_t *grupo, retangulo_t alvo) {
     int dano_total = 0;
 

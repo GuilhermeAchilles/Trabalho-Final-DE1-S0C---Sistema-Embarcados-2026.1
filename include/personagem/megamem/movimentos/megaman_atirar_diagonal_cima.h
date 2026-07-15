@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: atirar diagonal superior */
+
 #ifndef SPRITES_MEGAMAN_ATIRAR_DIAGONAL_CIMA_H
 #define SPRITES_MEGAMAN_ATIRAR_DIAGONAL_CIMA_H
 

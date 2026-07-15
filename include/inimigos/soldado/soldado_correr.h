@@ -1,3 +1,5 @@
+/* Sprite: Soldado correndo */
+
 #ifndef SPRITES_SOLDADO_CORRER_H
 #define SPRITES_SOLDADO_CORRER_H
 

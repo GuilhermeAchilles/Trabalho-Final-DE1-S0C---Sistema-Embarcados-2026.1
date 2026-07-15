@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: correr */
+
 #ifndef SPRITES_MEGAMAN_CORRER_H
 #define SPRITES_MEGAMAN_CORRER_H
 

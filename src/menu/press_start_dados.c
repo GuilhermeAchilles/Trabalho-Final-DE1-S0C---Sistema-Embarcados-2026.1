@@ -1,3 +1,4 @@
+/* Utilidade: Arquivo: press_start_dados.c */
 #include <stdint.h>
 
 #define PRESS_START_WIDTH 220

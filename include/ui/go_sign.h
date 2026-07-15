@@ -1,8 +1,4 @@
-/* =====================================================
- * go_sign.h — Sprite animado do final da fase
- * Limpo, sem fundo verde, convertido para RGB565
- * Chroma Key (Transparente): 0x0000
- * ===================================================== */
+/* Sprite: Sinal de GO do fim de fase */
 
 #ifndef GO_SIGN_H
 #define GO_SIGN_H
@@ -1038,3 +1034,4 @@ static const uint16_t go_sign_data[15][1056] = {
 };
 
 #endif /* GO_SIGN_H */
+

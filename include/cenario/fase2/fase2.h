@@ -1,3 +1,5 @@
+/* Mapas de pixel da Fase 2 (fundo, frente e colisao) */
+
 #ifndef FASE2_H
 #define FASE2_H
 

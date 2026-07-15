@@ -1,3 +1,4 @@
+/* Utilidade: Logica da batalha do Boss final da Fase 3 */
 #include "cenario/fases.h"
 #include "cenario/fase3/fase3.h"
 #include "personagem/jogador.h"
@@ -10,6 +11,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+/* Constantes da fase 3 */
 #define FASE3_TOTAL_GOOMBAS  15
 #define FASE3_TOTAL_SOLDADOS 15
 #define FASE3_TOTAL_INIMIGOS (FASE3_TOTAL_GOOMBAS + FASE3_TOTAL_SOLDADOS)
@@ -17,11 +19,13 @@
 #define GOOMBA_SIMULTANEOS   5
 #define SOLDADOS_SIMULTANEOS 3
 
+/* Slot para guardar o estado de cada soldado (ativo ou nao) */
 typedef struct {
     inimigo_t inimigo;
     int ativo;
 } soldado_slot_t;
 
+/* Desenha todos os elementos da cena (cenario, inimigos, boss, UI, etc) */
 static void desenhar_cena_fase_3(const cenario_t *c, const jogador_t *j,
                                  const tiros_t *tiros_jogador, const tank_t *tank,
                                  const goomba_t *goombas, const soldado_slot_t *soldados,
@@ -68,6 +72,7 @@ static void desenhar_cena_fase_3(const cenario_t *c, const jogador_t *j,
     fb_present();
 }
 
+/* Loop principal da Fase 3 (roda ate o jogador morrer ou derrotar o tank) */
 int rodar_fase_3(jogador_t *jogador) {
     cenario_t cenario;
     cenario_iniciar(&cenario, fase3_bg, NULL, fase3_colisao, FASE3_LARGURA, FASE3_ALTURA);

@@ -1,3 +1,5 @@
+/* Sprite: Tiro do Soldado */
+
 #ifndef SPRITES_SOLDADO_TIRO_H
 #define SPRITES_SOLDADO_TIRO_H
 

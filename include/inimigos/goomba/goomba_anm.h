@@ -1,8 +1,4 @@
-/* ==========================================================
- * C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\goomba_CNV.c
- * Gerado automaticamente por convert_to_rgb565.py
- * Fonte: C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\Goomba_Enemy.c | 18x18 | 5 frame(s) | Escala 1x
- * ========================================================== */
+/* Sprite: Animacao do Goomba */
 
 #ifndef GOOMBA_CNV_H
 #define GOOMBA_CNV_H

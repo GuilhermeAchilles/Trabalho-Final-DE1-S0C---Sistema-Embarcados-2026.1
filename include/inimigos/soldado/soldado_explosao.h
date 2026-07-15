@@ -1,3 +1,5 @@
+/* Sprite: Efeito de explosao do Soldado */
+
 #ifndef SPRITES_SOLDADO_EXPLOSAO_H
 #define SPRITES_SOLDADO_EXPLOSAO_H
 

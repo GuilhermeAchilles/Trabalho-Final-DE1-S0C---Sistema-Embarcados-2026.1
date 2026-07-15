@@ -1,6 +1,9 @@
+/* Utilidade: Funcoes base de desenho no buffer de video: copia de pixels, espelhamento e tint */
 #include "sprite/sprite.h"
 #include "framebuffer/framebuffer.h"
 
+/* Desenha um sprite na tela, pixel por pixel. Ignora a cor transparente. 
+   Se espelhado for 1, inverte a imagem horizontalmente. */
 void sprite_draw(const sprite_frame_t *frame, int x, int y, int espelhado) {
     for (int row = 0; row < frame->height; row++) {
         for (int col = 0; col < frame->width; col++) {
@@ -12,6 +15,7 @@ void sprite_draw(const sprite_frame_t *frame, int x, int y, int espelhado) {
     }
 }
 
+/* Igual ao sprite_draw, mas aumenta a imagem multiplicando o tamanho de cada pixel pela escala */
 void sprite_draw_escala(const sprite_frame_t *frame, int x, int y, int espelhado, int escala) {
     for (int row = 0; row < frame->height; row++) {
         for (int col = 0; col < frame->width; col++) {
@@ -27,6 +31,7 @@ void sprite_draw_escala(const sprite_frame_t *frame, int x, int y, int espelhado
     }
 }
 
+/* Desenha a silhueta do sprite usando uma cor solida (ignora as cores originais da imagem) */
 void sprite_draw_colorido(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t cor) {
     for (int row = 0; row < frame->height; row++) {
         for (int col = 0; col < frame->width; col++) {
@@ -38,6 +43,7 @@ void sprite_draw_colorido(const sprite_frame_t *frame, int x, int y, int espelha
     }
 }
 
+/* Igual a silhueta, mas tambem inverte verticalmente (de cabeca pra baixo) */
 void sprite_draw_colorido_flipv(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t cor) {
     for (int row = 0; row < frame->height; row++) {
         for (int col = 0; col < frame->width; col++) {
@@ -50,6 +56,7 @@ void sprite_draw_colorido_flipv(const sprite_frame_t *frame, int x, int y, int e
     }
 }
 
+/* Mistura as cores originais do sprite com uma cor escolhida (tint), baseado numa porcentagem (mix) */
 void sprite_draw_tint(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t tint_cor, float mix) {
     int tr = (tint_cor >> 11) & 0x1F;
     int tg = (tint_cor >> 5) & 0x3F;

@@ -1,3 +1,5 @@
+/* Sprite: Icone de power-up Vida */
+
 #ifndef SPRITES_ICONE_VIDA_H
 #define SPRITES_ICONE_VIDA_H
 

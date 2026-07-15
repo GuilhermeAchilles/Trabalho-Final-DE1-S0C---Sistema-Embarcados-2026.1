@@ -1,3 +1,4 @@
+/* Utilidade: Fisica, inputs e limitadores (cooldowns) do protagonista do jogo */
 #include "personagem/jogador.h"
 #include "framebuffer/framebuffer.h"
 #include "personagem/megamem/movimentos/megaman.h"
@@ -48,7 +49,7 @@ void jogador_iniciar(jogador_t *j, int spawn_x, int spawn_y) {
     j->spawn_y = spawn_y;
     j->direcao = 1;
 
-    /* MegaMan nao tem sprite de idle proprio - fica parado no 1o frame do correr. */
+    /* Define as animacoes. Idle usa o primeiro frame do 'correr' */
     animacao_iniciar(&j->anim_idle,             megaman_correr_frames,                1,                                          10, 1);
     animacao_iniciar(&j->anim_andar,            megaman_correr_frames,                MEGAMAN_CORRER_FRAME_COUNT,                5,  1);
     animacao_iniciar(&j->anim_pulo,             megaman_pular_frames,                 MEGAMAN_PULAR_FRAME_COUNT,                 5,  1);
@@ -90,10 +91,8 @@ void jogador_receber_dano_knockback(jogador_t *j, int dano, int origem_x) {
     if (j->timer_invulnerabilidade > 0) return;
     jogador_receber_dano(j, dano);
     
-    // Ignora inputs e aplica knockback por curto periodo (10 frames)
+    /* Aplica invulnerabilidade e um leve empurrao para tras */
     j->timer_invulnerabilidade = 10;
-    
-    // Angulo de 45 graus pra tras (reduzido drasticamente)
     j->vel_y = -3.0f; 
     j->knockback_vx = (j->px < origem_x) ? -1 : 1;
 }
@@ -113,8 +112,7 @@ void jogador_atualizar_entrada_tiro(jogador_t *j, int *fire_clique, int *fire_fo
     }
 }
 
-/* True se a coluna de pixels (linha horizontal y, largura JOGADOR_LARGURA a partir de x)
-   tem chao onde pousar: solido sempre, plataforma so quando nao esta atravessando (drop). */
+/* Retorna 1 se tem chao em (x, y) */
 static int linha_tem_chao(const cenario_t *c, int x, int y, int drop_through) {
     for (int dx = 0; dx <= JOGADOR_LARGURA - 1; dx += 4) {
         int tipo = cenario_colisao(c, x + dx, y);
@@ -127,10 +125,7 @@ static int linha_tem_chao(const cenario_t *c, int x, int y, int drop_through) {
     return 0;
 }
 
-/* Menor y (mais alto, primeiro encontrado descendo) com chao sob TODA a largura do
-   jogador entre y0 e y1 - nao so uma borda. Isso evita que virar de direcao bem no
-   topo de uma rampa (onde a borda esquerda e a direita do corpo ficam em alturas
-   bem diferentes) pareca um degrau maior do que realmente e. -1 se nao achar. */
+/* Encontra a altura do chao (y) imediatamente debaixo do jogador. Retorna -1 se nao achar */
 static int chao_sob_jogador(const cenario_t *c, int x, int y0, int y1, int drop_through) {
     for (int y = y0; y <= y1; y++) {
         if (linha_tem_chao(c, x, y, drop_through)) return y;
@@ -138,13 +133,7 @@ static int chao_sob_jogador(const cenario_t *c, int x, int y0, int y1, int drop_
     return -1;
 }
 
-/* Anda pra esquerda/direita.
-   No ar, so uma parede solida na faixa dos pes bloqueia (nao gruda em plataforma).
-   No chao, ACOMPANHA o relevo (rampas/escadas feitas de solido ou plataforma) usando
-   a largura inteira do pe: sobe ou desce ate TOLERANCIA_DEGRAU por passo; degrau maior
-   que isso bloqueia como parede. Isso e o que faz o personagem subir/descer rampas
-   andando, em vez de simplesmente atravessar plataformas (que nao bloqueiam colisao
-   lateral por si so). */
+/* Move o jogador para os lados e acompanha rampas / degraus (ate TOLERANCIA_DEGRAU) */
 static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_through, int cutscene_mode) {
     int passo = 0;
     
@@ -179,13 +168,13 @@ static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_t
     int chao_y = chao_sob_jogador(c, novo_px, topo_busca, fundo_busca, drop_through);
 
     if (chao_y == -1) {
-        /* beira de um precipicio - anda e deixa a gravidade cuidar da queda */
+        /* Fim do chao: deixa a gravidade agir */
         j->px = novo_px;
         j->no_chao = 0;
         return 1;
     }
     if (chao_y < pes_y - TOLERANCIA_DEGRAU) {
-        return 0; /* parede ou degrau alto demais pra subir andando */
+        return 0; /* Parede muito alta para subir andando */
     }
 
     j->px = novo_px;
@@ -194,7 +183,7 @@ static int jogador_mover_horizontal(jogador_t *j, const cenario_t *c, int drop_t
     return 1;
 }
 
-/* Aplica gravidade, resolve pouso no chao e batida de cabeca no teto. */
+/* Calcula colisao com teto e chao na vertical */
 static void jogador_fisica_vertical(jogador_t *j, const cenario_t *c, int drop_through) {
     j->vel_y += GRAVIDADE;
     if (j->vel_y > VEL_MAX_QUEDA) j->vel_y = VEL_MAX_QUEDA;
@@ -254,7 +243,7 @@ void jogador_atualizar(jogador_t *j, const cenario_t *c, int cutscene_mode) {
     }
 
     if (j->estado == ESTADO_MORRER) {
-        /* preso na animacao de morrer até apertar ACAO de novo (revive no spawn - demo) */
+        /* Se morreu, aguarda apertar o botao de acao para renascer */
         if (acao_edge) {
             jogador_reposicionar_no_spawn(j);
             animacao_reiniciar(&j->anim_morrer);
@@ -364,7 +353,7 @@ void jogador_atualizar_animacao(jogador_t *j, float dy) {
     j->frame = animacao_frame_atual(anim_atual);
 }
 
-/* Desenha o sprite alinhado pela base/centro do hitbox, deslocado pela camera. */
+/* Desenha o jogador na tela e os efeitos visuais (rastro, piscar) */
 void jogador_desenhar(const jogador_t *j, int camera_x, int camera_y) {
     for (int i=0; i<RASTRO_MAX; i++) {
         if (j->rastros[i].vida > 0 && j->rastros[i].frame) {
@@ -480,5 +469,4 @@ void jogador_processar_tiro(jogador_t *j, tiros_t *tiros, int fire_clique, int f
     }
 }
 
-/* Um slot de soldado no campo - "ativo" indica se ha um soldado vivo nesse slot agora
-   (quando morre e e substituido, o mesmo slot passa a representar outro soldado). */
+

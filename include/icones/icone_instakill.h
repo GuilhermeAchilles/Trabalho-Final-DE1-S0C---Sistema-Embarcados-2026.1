@@ -1,3 +1,5 @@
+/* Sprite: Icone de power-up Instakill */
+
 #ifndef SPRITES_ICONE_INSTAKILL_H
 #define SPRITES_ICONE_INSTAKILL_H
 

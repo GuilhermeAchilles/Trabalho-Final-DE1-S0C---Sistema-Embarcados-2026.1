@@ -1,3 +1,5 @@
+/* Mapas de pixel da Fase 3 (boss final) */
+
 #ifndef FASE3_H
 #define FASE3_H
 

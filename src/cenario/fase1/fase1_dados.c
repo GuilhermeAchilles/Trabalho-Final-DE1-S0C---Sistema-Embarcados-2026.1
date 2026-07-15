@@ -1,6 +1,4 @@
-/* GERADO a partir de Demake_Metal_Slug_De1Soc-main/src/bk1_rgb565.c (cenario do Marcus).
-   Apenas os arrays de pixel foram renomeados para o padrao do projeto;
-   os dados sao identicos ao original. Nao editar a mao. */
+/* Utilidade: Matriz de pixels da imagem em RGB565 da Fase 1 */
 #include "cenario/fase1/fase1.h"
 
 const uint16_t fase1_fg[FASE1_PIXELS] = {
@@ -27011,4 +27009,5 @@ const uint16_t fase1_bg[FASE1_PIXELS] = {
     0x0864, 0x0864, 0x0864, 0x0864, 0x0864, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863,
     0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863, 0x0863
 };
+
 

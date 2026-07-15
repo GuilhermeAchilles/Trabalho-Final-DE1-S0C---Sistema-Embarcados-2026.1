@@ -1,3 +1,5 @@
+/* Sprite: Soldado morrendo */
+
 #ifndef SPRITES_SOLDADO_MORRER_H
 #define SPRITES_SOLDADO_MORRER_H
 

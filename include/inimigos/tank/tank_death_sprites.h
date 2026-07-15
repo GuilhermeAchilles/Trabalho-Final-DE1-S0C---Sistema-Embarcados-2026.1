@@ -1,8 +1,4 @@
-/* ==========================================================
- * C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_death_CNV.c
- * Gerado automaticamente por convert_to_rgb565.py
- * Fonte: C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_death.c | 76x87 | 1 frame(s) | Escala 1x
- * ========================================================== */
+/* Sprite: Tank destruido */
 
 #ifndef TANK_DEATH_CNV_H
 #define TANK_DEATH_CNV_H

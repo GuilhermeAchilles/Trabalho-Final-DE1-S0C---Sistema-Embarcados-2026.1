@@ -1,3 +1,5 @@
+/* Tela de vitoria / final do jogo */
+
 #ifndef FINAL_TELA_H
 #define FINAL_TELA_H
 

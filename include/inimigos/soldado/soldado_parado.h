@@ -1,3 +1,5 @@
+/* Sprite: Soldado parado (idle) */
+
 #ifndef SPRITES_SOLDADO_PARADO_H
 #define SPRITES_SOLDADO_PARADO_H
 

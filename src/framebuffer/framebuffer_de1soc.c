@@ -1,3 +1,5 @@
+/* Utilidade: Conexao com hardware real: threads, ponteiros DMA para VGA e perifericos no FPGA */
+#define _DEFAULT_SOURCE
 #include "framebuffer/framebuffer.h"
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -13,48 +15,31 @@
 #include "hardware/hardware_state.h"
 #include <stdlib.h>
 
-/* =========================================================================
-   PIXEL BUFFER VGA — mapeamento de memória direto no hardware
-   =========================================================================
-   Endereço físico e span conforme configuração padrão do Pixel Buffer
-   DE1-SoC (320x240, RGB565). Confirme FB_PHYS_ADDR e FB_SPAN contra a
-   configuração real do Qsys/Platform Designer da sua FPGA.             */
+/* Mapeamento de memoria direto no hardware do Pixel Buffer VGA na DE1-SoC.
+   Lembre-se de confirmar o endereco base no Qsys se a placa mudar! */
 #define FB_PHYS_ADDR_FRONT 0xC8000000
 #define FB_PHYS_ADDR_BACK  0xC0000000
 #define FB_SPAN            (512 * FB_HEIGHT * sizeof(fb_color_t))
 
 #define CHAR_BUF_ADDR      0xC9000000
-#define CHAR_BUF_SPAN      0x2000 // 8KB
+#define CHAR_BUF_SPAN      0x2000 /* 8KB */
 
 #define LW_BRIDGE_ADDR     0xFF200000
-#define LW_BRIDGE_SPAN     0x200000 // 2MB
+#define LW_BRIDGE_SPAN     0x200000 /* 2MB */
 
 static int mem_fd = -1;
 static volatile fb_color_t *fb_buf_front = NULL;
-static fb_color_t *shadow_buffer = NULL; // Shadow buffer na RAM
-static fb_color_t *fb_ptr = NULL; // Ponteiro ativo aponta pra RAM
+static fb_color_t *shadow_buffer = NULL; /* Shadow buffer alocado na RAM */
+static fb_color_t *fb_ptr = NULL; /* Ponteiro ativo aponta pra RAM */
 
 static volatile char *char_ptr = NULL;
 static volatile void *lw_ptr = NULL;
 
-/* =========================================================================
-   SISTEMA DE INPUT — Thread em background (teclado + mouse USB)
-   =========================================================================
-   Conforme descrito na documentação (gemini.md):
-   - Uma pthread é criada na fb_init()
-   - Teclado: lido via /dev/input/eventX (struct input_event)
-   - Mouse:   lido via /dev/input/mice   (blocos de 3 bytes)
-   - As funções fb_key_down() e fb_mouse_pos() retornam instantaneamente
-     os valores das variáveis estáticas atualizadas pela thread.        */
-
-/* --- Estado compartilhado (escrito pela thread, lido pela engine) --- */
-
-/* Mapa de teclas Linux (KEY_*) → estado pressionado/solto.
-   O kernel define KEY_MAX (~767), mas 256 cobre todo teclado USB. */
+/* Thread paralela de input e variaveis compartilhadas (teclado/mouse via /dev/input) */
 #define KEY_STATE_SIZE 256
 static volatile int key_state[KEY_STATE_SIZE];
 
-/* Botões do mouse (bit 0 = esquerdo, bit 1 = direito, bit 2 = meio) */
+/* Botoes do mouse (0=Esq, 1=Dir, 2=Meio) */
 static volatile int mouse_buttons = 0;
 
 /* Posição absoluta do mouse, mantida em coordenadas do framebuffer */
@@ -72,9 +57,7 @@ static int kbd_thread_criada  = 0;
 static int mouse_thread_criada = 0;
 static int switch_thread_criada = 0;
 
-/* -------------------------------------------------------------------------
-   Rotina de decodificação para Display de 7 Segmentos (Slide 15)
-   ------------------------------------------------------------------------- */
+/* Converte um numero de 0 a 9 para o formato de bits do Display de 7 Segmentos */
 static uint32_t dec2seg(int digit) {
     switch(digit) {
         case 0: return 0x3F;
@@ -91,10 +74,7 @@ static uint32_t dec2seg(int digit) {
     }
 }
 
-/* -------------------------------------------------------------------------
-   Descobrir automaticamente o dispositivo de teclado USB
-   Percorre /dev/input/eventX testando quais bits de EV são suportados.
-   Um teclado reporta EV_KEY.                                           */
+/* Procura no Linux (/dev/input/eventX) o arquivo do teclado USB e retorna o File Descriptor */
 static int abrir_teclado(void) {
     char path[64];
     for (int i = 0; i < 32; i++) {
@@ -129,11 +109,7 @@ static int abrir_teclado(void) {
     return -1;
 }
 
-/* -------------------------------------------------------------------------
-   Thread do TECLADO
-   Lê struct input_event de /dev/input/eventX continuamente.
-   Eventos com type == EV_KEY e code < KEY_STATE_SIZE são usados para
-   atualizar o array key_state[].                                       */
+/* Thread que roda em background lendo as teclas pressionadas e guardando num array global */
 static void *thread_teclado(void *arg) {
     (void)arg;
     int fd = abrir_teclado();
@@ -157,14 +133,7 @@ static void *thread_teclado(void *arg) {
     return NULL;
 }
 
-/* -------------------------------------------------------------------------
-   Thread do MOUSE
-   Lê /dev/input/mice — protocolo PS/2 simplificado, blocos de 3 bytes:
-     byte[0]: botões (bit0=esq, bit1=dir, bit2=meio) + sinais de overflow
-     byte[1]: delta X (com sinal, complemento de 2)
-     byte[2]: delta Y (com sinal, complemento de 2)
-
-   A posição absoluta é mantida clamped nas coordenadas do framebuffer. */
+/* Thread que roda em background lendo os eventos do mouse e calculando a coordenada da mira */
 static void *thread_mouse(void *arg) {
     (void)arg;
     int fd = open("/dev/input/mice", O_RDONLY);
@@ -211,9 +180,7 @@ static void *thread_mouse(void *arg) {
     return NULL;
 }
 
-/* -------------------------------------------------------------------------
-   Thread de SWITCHES (Pause Interrupt)
-   ------------------------------------------------------------------------- */
+/* Thread em background que verifica se a chave SW0 da placa foi levantada (para pausar) */
 static void *thread_switches(void *arg) {
     while (input_running) {
         if (lw_ptr && lw_ptr != MAP_FAILED) {
@@ -230,9 +197,7 @@ static void *thread_switches(void *arg) {
     return NULL;
 }
 
-/* =========================================================================
-   IMPLEMENTAÇÃO DA API fb_* (framebuffer.h)
-   ========================================================================= */
+/* Prepara a FPGA: mapeia os ponteiros de video (memoria) e cria as threads do teclado/mouse */
 
 void fb_init(void) {
     mem_fd = open("/dev/mem", O_RDWR | O_SYNC);
@@ -241,7 +206,7 @@ void fb_init(void) {
         exit(1);
     }
 
-    /* --- Mapear Pixel Buffers (Front) --- */
+    /* Mapear Pixel Buffers (Front) */
     fb_buf_front = (volatile fb_color_t *)mmap(
         NULL, FB_SPAN, PROT_READ | PROT_WRITE,
         MAP_SHARED, mem_fd, FB_PHYS_ADDR_FRONT
@@ -260,12 +225,12 @@ void fb_init(void) {
         perror("[DE1-SoC] Erro ao alocar shadow buffer na RAM");
         exit(1);
     }
-    fb_ptr = shadow_buffer; // Desenha tudo na RAM (super rapido)
+    fb_ptr = shadow_buffer; /* Desenha tudo na RAM (super rapido) pra evitar flicking */
 
-    /* --- Mapear LW Bridge (VGA Ctrl, LEDs, Switches, 7-Seg) --- */
+    /* Mapear LW Bridge (VGA Ctrl, LEDs, Switches, 7-Seg) */
     lw_ptr = mmap(NULL, LW_BRIDGE_SPAN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, LW_BRIDGE_ADDR);
 
-    /* --- Mapear Character Buffer e Limpar Texto do Linux --- */
+    /* Mapear Character Buffer e Limpar Texto do Linux */
     char_ptr = (volatile char *)mmap(NULL, CHAR_BUF_SPAN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, CHAR_BUF_ADDR);
     if (char_ptr != MAP_FAILED) {
         memset((void *)char_ptr, ' ', CHAR_BUF_SPAN);
@@ -273,13 +238,13 @@ void fb_init(void) {
 
     printf("[DE1-SoC] VGA mapeado! Double Buffer ativo.\n");
 
-    /* --- Inicializar estado de input --- */
+    /* Inicializar estado de input */
     memset((void *)key_state, 0, sizeof(key_state));
     mouse_buttons = 0;
     mouse_x = FB_WIDTH  / 2;
     mouse_y = FB_HEIGHT / 2;
 
-    /* --- Iniciar threads de input em background --- */
+    /* Iniciar threads de input em background */
     input_running = 1;
 
     if (pthread_create(&kbd_thread, NULL, thread_teclado, NULL) == 0) {
@@ -301,6 +266,7 @@ void fb_init(void) {
     }
 }
 
+/* Finaliza as threads, solta a memoria alocada e fecha a comunicacao com a FPGA de forma segura */
 void fb_shutdown(void) {
     /* Parar threads de input */
     input_running = 0;
@@ -333,6 +299,7 @@ void fb_shutdown(void) {
     printf("[DE1-SoC] Shutdown completo.\n");
 }
 
+/* Pinta o buffer da memoria RAM inteirinho de uma cor so (ex: pra limpar a tela a cada frame) */
 void fb_clear(fb_color_t color) {
     if (!fb_ptr) return;
     for (int y = 0; y < FB_HEIGHT; y++) {
@@ -342,19 +309,21 @@ void fb_clear(fb_color_t color) {
     }
 }
 
+/* Pinta um unico pixel (x,y) na tela. Origem no canto superior esquerdo */
 void fb_put_pixel(int x, int y, fb_color_t color) {
     if (!fb_ptr) return;
     if (x < 0 || x >= FB_WIDTH || y < 0 || y >= FB_HEIGHT) return;
     fb_ptr[y * 512 + x] = color;
 }
 
+/* Manda a imagem montada na RAM para o VGA, e tambem atualiza os LEDs e os Displays 7-seg */
 void fb_present(void) {
     if (!lw_ptr || lw_ptr == MAP_FAILED) {
         usleep(16000); /* Fallback */
         return;
     }
 
-    /* --- Atualizar Hardware (LEDs e Displays) --- */
+    /* Atualizar Hardware (LEDs e Displays) */
     volatile uint32_t *led_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x0);
     volatile uint32_t *hex3_0_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x20);
     volatile uint32_t *hex5_4_ptr = (volatile uint32_t *)((uint8_t *)lw_ptr + 0x30);
@@ -369,18 +338,18 @@ void fb_present(void) {
     if (num > 999999) num = 999999;
     
     uint32_t hex3_0 = 0;
-    hex3_0 |= (dec2seg(num % 10)); // HEX0
-    hex3_0 |= (dec2seg((num / 10) % 10) << 8); // HEX1
-    hex3_0 |= (dec2seg((num / 100) % 10) << 16); // HEX2
-    hex3_0 |= (dec2seg((num / 1000) % 10) << 24); // HEX3
+    hex3_0 |= (dec2seg(num % 10)); /* HEX0 */
+    hex3_0 |= (dec2seg((num / 10) % 10) << 8); /* HEX1 */
+    hex3_0 |= (dec2seg((num / 100) % 10) << 16); /* HEX2 */
+    hex3_0 |= (dec2seg((num / 1000) % 10) << 24); /* HEX3 */
     *hex3_0_ptr = hex3_0;
     
     uint32_t hex5_4 = 0;
-    hex5_4 |= (dec2seg((num / 10000) % 10)); // HEX4
-    hex5_4 |= (dec2seg((num / 100000) % 10) << 8); // HEX5
+    hex5_4 |= (dec2seg((num / 10000) % 10)); /* HEX4 */
+    hex5_4 |= (dec2seg((num / 100000) % 10) << 8); /* HEX5 */
     *hex5_4_ptr = hex5_4;
 
-    /* --- Shadow Buffer Copy --- */
+    /* Shadow Buffer Copy */
     /* Copiar frame inteiro da RAM para o VGA em burst memory (muito rapido) */
     if (fb_buf_front && shadow_buffer) {
         memcpy((void *)fb_buf_front, (void *)shadow_buffer, FB_SPAN);
@@ -390,22 +359,14 @@ void fb_present(void) {
     usleep(16000);
 }
 
+/* Retorna 1 se o jogador apertou a tecla Esc para sair do jogo */
 int fb_poll_quit(void) {
     /* Sem sistema de janelas — sair é via Ctrl+C no terminal.
        Mas podemos usar ESC (KEY_ESC = 1) como saída limpa. */
     return key_state[KEY_ESC];
 }
 
-/* =========================================================================
-   INPUT: Teclado
-   Mapeia fb_key_t → key codes Linux (definidos em <linux/input.h>)
-   Mesmos controles do backend SDL:
-     A/D ou setas = movimento
-     Espaço       = pulo
-     Mouse esq.   = tiro normal
-     Mouse dir.   = tiro forte
-     K            = ação (debug)
-   ========================================================================= */
+/* Associa os comandos do jogo (ex: PULO) com a tecla fisica do PC ou mouse (ex: ESPACO) */
 int fb_key_down(fb_key_t key) {
     switch (key) {
         case FB_KEY_UP:
@@ -430,12 +391,9 @@ int fb_key_down(fb_key_t key) {
     return 0;
 }
 
-/* =========================================================================
-   INPUT: Mouse
-   Retorna a posição absoluta do cursor em coordenadas do framebuffer
-   (0..FB_WIDTH-1, 0..FB_HEIGHT-1), atualizada pela thread do mouse.
-   ========================================================================= */
+/* Retorna a ultima coordenada lida do mouse, pra usar como mira */
 void fb_mouse_pos(int *x, int *y) {
     *x = (int)mouse_x;
     *y = (int)mouse_y;
 }
+

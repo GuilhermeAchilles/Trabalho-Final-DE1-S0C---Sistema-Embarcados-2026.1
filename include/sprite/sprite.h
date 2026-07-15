@@ -1,9 +1,11 @@
+/* Estruturas e funcoes de desenho de sprites */
+
 #ifndef SPRITE_H
 #define SPRITE_H
 
 #include <stdint.h>
 
-/* Cor sentinela de transparencia: pixels com esse valor nao sao desenhados */
+/* Cor usada pra representar transparencia (magenta em RGB565) */
 #define SPRITE_TRANSPARENT 0xF81F
 
 typedef struct {
@@ -12,18 +14,19 @@ typedef struct {
     const uint16_t *pixels;
 } sprite_frame_t;
 
-/* espelhado = 1 desenha o frame invertido horizontalmente (personagem virado pro outro lado). */
+/* Desenha o frame na posicao (x, y). espelhado = 1 inverte horizontalmente */
 void sprite_draw(const sprite_frame_t *frame, int x, int y, int espelhado);
 
+/* Desenha com escala (ex: escala=2 dobra o tamanho) */
 void sprite_draw_escala(const sprite_frame_t *frame, int x, int y, int espelhado, int escala);
 
-/* Como sprite_draw, mas pinta toda a silhueta (pixels nao-transparentes) com uma cor
-   solida, ignorando a cor original - usado pra dar feedback de hit (flash vermelho). */
+/* Desenha a silhueta inteira com uma cor so (usado pro flash de dano) */
 void sprite_draw_colorido(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t cor);
-/* Como sprite_draw_colorido, mas inverte verticalmente (de cabeca para baixo). */
+
+/* Igual ao colorido mas de cabeca pra baixo */
 void sprite_draw_colorido_flipv(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t cor);
 
-/* Desenha a sprite aplicando um tint (mescla da cor original com uma cor especifica). mix de 0.0 (original) a 1.0 (cor solida) */
+/* Desenha misturando a cor original com uma cor de tint. mix vai de 0.0 a 1.0 */
 void sprite_draw_tint(const sprite_frame_t *frame, int x, int y, int espelhado, uint16_t tint_cor, float mix);
 
 #endif

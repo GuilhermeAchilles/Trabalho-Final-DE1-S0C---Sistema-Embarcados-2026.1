@@ -1,3 +1,5 @@
+/* Centraliza os sprites do Tank */
+
 #ifndef TANK_SPRITES_H
 #define TANK_SPRITES_H
 

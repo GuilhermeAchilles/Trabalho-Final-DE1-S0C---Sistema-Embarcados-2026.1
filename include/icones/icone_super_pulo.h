@@ -1,3 +1,5 @@
+/* Sprite: Icone de power-up Super Pulo */
+
 #ifndef SPRITES_ICONE_SUPER_PULO_H
 #define SPRITES_ICONE_SUPER_PULO_H
 

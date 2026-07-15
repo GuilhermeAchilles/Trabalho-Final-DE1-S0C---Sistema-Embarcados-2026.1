@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: pular */
+
 #ifndef SPRITES_MEGAMAN_PULAR_H
 #define SPRITES_MEGAMAN_PULAR_H
 

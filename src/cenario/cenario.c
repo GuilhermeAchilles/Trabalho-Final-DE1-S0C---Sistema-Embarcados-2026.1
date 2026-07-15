@@ -1,8 +1,10 @@
+/* Utilidade: Logica de renderizacao do mapa (background/foreground) com offset de camera */
 #include "cenario/cenario.h"
 #include "framebuffer/framebuffer.h"
 #include "sprite/sprite.h"
 #include <stddef.h>
 
+/* Salva os ponteiros dos mapas de colisao, fundo e frente (background/foreground) na struct */
 void cenario_iniciar(cenario_t *c, const uint16_t *bg, const uint16_t *fg,
                      const uint8_t *colisao, int largura, int altura) {
     c->bg = bg;
@@ -14,6 +16,7 @@ void cenario_iniciar(cenario_t *c, const uint16_t *bg, const uint16_t *fg,
     c->camera_y = 0;
 }
 
+/* Pega o tipo de bloco na posicao (x,y) do mapa de colisao (0=vazio, 1=solido, etc) */
 int cenario_colisao(const cenario_t *c, int x, int y) {
     if (x < 0 || y < 0 || x >= c->largura || y >= c->altura) {
         return CENARIO_SOLIDO;
@@ -21,10 +24,12 @@ int cenario_colisao(const cenario_t *c, int x, int y) {
     return c->colisao[y * c->largura + x];
 }
 
+/* Verifica especificamente se o ponto (x,y) eh uma parede solida */
 int cenario_solido(const cenario_t *c, int x, int y) {
     return cenario_colisao(c, x, y) == CENARIO_SOLIDO;
 }
 
+/* Desce pelo mapa a partir do start_y na coluna x ate achar o chao (solido ou plataforma) */
 int cenario_chao_y(const cenario_t *c, int x, int start_y) {
     if (start_y < 0) start_y = 0;
     for (int y = start_y; y < c->altura; y++) {
@@ -36,6 +41,7 @@ int cenario_chao_y(const cenario_t *c, int x, int start_y) {
     return c->altura - 1;
 }
 
+/* Centraliza a camera no alvo (geralmente o jogador), travando nas bordas do mapa */
 void cenario_centralizar_camera(cenario_t *c, int alvo_x, int alvo_y) {
     int cam_x = alvo_x - FB_WIDTH / 2;
     int cam_y = alvo_y - FB_HEIGHT / 2;
@@ -52,6 +58,7 @@ void cenario_centralizar_camera(cenario_t *c, int alvo_x, int alvo_y) {
     c->camera_y = cam_y;
 }
 
+/* Desenha a camada de fundo (background) com base na posicao da camera */
 void cenario_desenhar_bg(const cenario_t *c) {
     for (int sy = 0; sy < FB_HEIGHT; sy++) {
         int wy = c->camera_y + sy;
@@ -66,6 +73,7 @@ void cenario_desenhar_bg(const cenario_t *c) {
     }
 }
 
+/* Desenha a camada da frente (foreground). Pixels pretos (0x0000) sao transparentes */
 void cenario_desenhar_fg(const cenario_t *c) {
     if (c->fg == NULL) return;
     for (int sy = 0; sy < FB_HEIGHT; sy++) {

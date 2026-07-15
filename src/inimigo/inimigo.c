@@ -1,3 +1,4 @@
+/* Utilidade: Fisica basica e maquina de estados comum (andar, atirar, cair) para todos inimigos */
 #include <math.h>
 #include <stdlib.h>
 #include "inimigo/inimigo.h"
@@ -7,6 +8,7 @@
 /* quantos frames de jogo a silhueta fica vermelha depois de tomar um hit */
 #define INIMIGO_FLASH_FRAMES 8
 
+/* Inicializa a struct do inimigo: seta os frames das animacoes, vida, cooldown do tiro, e o tipo de projetil */
 void inimigo_iniciar(inimigo_t *inimigo, int px, int py, int chao_y, int vida,
                       const sprite_frame_t *idle_frames, int idle_frame_count, int idle_frames_por_sprite,
                       const sprite_frame_t *andar_frames, int andar_frame_count, int andar_frames_por_sprite,
@@ -43,6 +45,7 @@ void inimigo_iniciar(inimigo_t *inimigo, int px, int py, int chao_y, int vida,
     inimigo->flash_frames = 0;
 }
 
+/* IA principal do inimigo: calcula a distancia pro jogador e decide se vai andar, atirar ou pular */
 void inimigo_atualizar(inimigo_t *inimigo, tiros_t *tiros, int alvo_x, int alvo_y, const cenario_t *cenario) {
     if (inimigo->flash_frames > 0) {
         inimigo->flash_frames--;
@@ -193,6 +196,7 @@ void inimigo_atualizar(inimigo_t *inimigo, tiros_t *tiros, int alvo_x, int alvo_
     inimigo->frame = animacao_frame_atual(anim_atual);
 }
 
+/* Desenha o inimigo com base na camera. Se tomou tiro ha pouco tempo, pisca na cor vermelha */
 void inimigo_desenhar(const inimigo_t *inimigo, int camera_x, int camera_y) {
     int x = inimigo->px - camera_x;
     int y = inimigo->py - camera_y;
@@ -214,10 +218,12 @@ void inimigo_desenhar(const inimigo_t *inimigo, int camera_x, int camera_y) {
     }
 }
 
+/* Retorna a "caixa" (AABB) exata onde o inimigo esta no mapa para calcular tiros batendo nele */
 retangulo_t inimigo_hitbox(const inimigo_t *inimigo) {
     return (retangulo_t){ inimigo->px, inimigo->py, inimigo->frame->width, inimigo->frame->height };
 }
 
+/* Reduz a vida do inimigo, da o trigger do flash vermelho, e muda o estado pra morrer se a vida zerar */
 void inimigo_receber_dano(inimigo_t *inimigo, int dano) {
     if (inimigo->estado == INIMIGO_ESTADO_MORRENDO || inimigo->estado == INIMIGO_ESTADO_EXPLODINDO || dano <= 0) return;
 
@@ -231,6 +237,7 @@ void inimigo_receber_dano(inimigo_t *inimigo, int dano) {
     }
 }
 
+/* Confirma se a animacao de morte/explosao finalizou, avisando a maquina que o inimigo ja pode sumir */
 int inimigo_esta_morto(const inimigo_t *inimigo) {
     return inimigo->estado == INIMIGO_ESTADO_EXPLODINDO && animacao_terminou(&inimigo->anim_explosao);
 }

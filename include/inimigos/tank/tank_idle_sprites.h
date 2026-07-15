@@ -1,8 +1,4 @@
-/* ==========================================================
- * C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_idle_CNV.c
- * Gerado automaticamente por convert_to_rgb565.py
- * Fonte: C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_idle.c | 76x87 | 3 frame(s) | Escala 1x
- * ========================================================== */
+/* Sprite: Tank parado (idle) */
 
 #ifndef TANK_IDLE_CNV_H
 #define TANK_IDLE_CNV_H

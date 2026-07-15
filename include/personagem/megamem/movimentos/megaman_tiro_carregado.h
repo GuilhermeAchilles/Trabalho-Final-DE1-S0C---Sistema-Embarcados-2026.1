@@ -1,3 +1,5 @@
+/* Sprite: Projetil tiro carregado do MegaMan */
+
 #ifndef SPRITES_MEGAMAN_TIRO_CARREGADO_H
 #define SPRITES_MEGAMAN_TIRO_CARREGADO_H
 

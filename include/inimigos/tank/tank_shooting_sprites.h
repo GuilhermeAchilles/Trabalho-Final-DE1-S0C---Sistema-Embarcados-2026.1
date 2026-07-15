@@ -1,8 +1,4 @@
-/* ==========================================================
- * C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_shooting_CNV.c
- * Gerado automaticamente por convert_to_rgb565.py
- * Fonte: C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\tank_shooting0-8_fire_9-10.c | 79x87 | 11 frame(s) | Escala 1x
- * ========================================================== */
+/* Sprite: Tank atirando */
 
 #ifndef TANK_SHOOTING_CNV_H
 #define TANK_SHOOTING_CNV_H

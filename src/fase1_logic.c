@@ -1,3 +1,4 @@
+/* Utilidade: Loop de gameplay, controle de inimigos e maquina de estados da Fase 1 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -18,19 +19,22 @@
 #include "ui/ui.h"
 #include "hardware/hardware_state.h"
 
+/* Constantes da fase 1 */
 #define INIMIGO_INTERVALO_TIRO 180
 #define INIMIGO_VIDA   4
 #define FASE1_TOTAL_INIMIGOS 10
 #define INIMIGOS_SIMULTANEOS  3
 
+/* Slot para guardar o estado de cada soldado (ativo ou nao) */
 typedef struct {
     inimigo_t inimigo;
     int ativo;
 } soldado_slot_t;
 
+/* Spawna um inimigo em um local aleatorio no chao */
 static void spawnar_soldado(soldado_slot_t *slot, const cenario_t *c, int indice_spawn, tipo_tiro_t tiro) {
     int x = 20 + (rand() % (c->largura - 60));
-    int chao = cenario_chao_y(c, x + 38 / 2, 0); // SOLDADO_LARGURA = 38
+    int chao = cenario_chao_y(c, x + 38 / 2, 0); /* SOLDADO_LARGURA = 38 */
     inimigo_iniciar(&slot->inimigo, x, c->camera_y - 80, chao - 45, INIMIGO_VIDA,
                      soldado_parado_frames, SOLDADO_PARADO_FRAME_COUNT, 10,
                      soldado_correr_frames, SOLDADO_CORRER_FRAME_COUNT, 5,
@@ -42,6 +46,7 @@ static void spawnar_soldado(soldado_slot_t *slot, const cenario_t *c, int indice
     slot->ativo = 1;
 }
 
+/* Desenha todos os elementos da cena (cenario, inimigos, UI, etc) */
 static void desenhar_cena_fase_1(const cenario_t *c, const jogador_t *j, const tiros_t *tiros,
                                  const soldado_slot_t *soldados, int total_soldados, const tiros_t *tiros_inimigo,
                                  int mira_tela_x, int mira_tela_y, float dx, float dy, int inimigos_restantes, int frame_contador, int fase_terminando) {
@@ -69,6 +74,7 @@ static void desenhar_cena_fase_1(const cenario_t *c, const jogador_t *j, const t
     fb_present();
 }
 
+/* Loop principal da Fase 1 (roda ate o jogador morrer ou passar de fase) */
 int rodar_fase_1(jogador_t *jogador) {
     cenario_t cenario;
     cenario_iniciar(&cenario, fase1_bg, fase1_fg, fase1_colisao, FASE1_LARGURA, FASE1_ALTURA);
@@ -101,7 +107,7 @@ int rodar_fase_1(jogador_t *jogador) {
 
     while (!fb_poll_quit()) {
         if (hw_jogo_pausado) {
-            /* Se estiver pausado, desenha o último frame e continua congelado */
+            /* Pausado: desenha ultimo frame e congela */
             desenhar_cena_fase_1(&cenario, jogador, &tiros, soldados, INIMIGOS_SIMULTANEOS, &tiros_inimigo, 0, 0, 0, 0, FASE1_TOTAL_INIMIGOS - inimigos_mortos, frame_contador, fase_terminando);
             fb_present();
             continue;
@@ -198,7 +204,7 @@ int rodar_fase_1(jogador_t *jogador) {
         int inimigos_restantes = FASE1_TOTAL_INIMIGOS - inimigos_mortos;
         if (inimigos_restantes < 0) inimigos_restantes = 0;
         
-        // Atualiza as variaveis do Hardware (DE1-SoC FPGA)
+        /* Atualiza as variaveis do Hardware (DE1-SoC FPGA) */
         hw_display_inimigos_restantes = inimigos_restantes;
         hw_leds_vida_personagem = jogador->vida;
 
@@ -215,7 +221,7 @@ int rodar_fase_1(jogador_t *jogador) {
         }
 
         if (fase_terminando && jogador->px <= 0) {
-            venceu = 2; // Easter Egg: vai para Fase 1.5
+            venceu = 2; /* Easter Egg: vai para Fase 1.5 */
             break;
         }
 

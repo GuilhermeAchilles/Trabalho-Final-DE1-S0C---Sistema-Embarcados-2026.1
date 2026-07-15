@@ -1,8 +1,10 @@
+/* Utilidade: Comportamento do Boss Copycat (usa buffer circular para imitar o jogador) */
 #include "inimigos/copycat/copycat.h"
 #include "sprite/sprite.h"
 #include "framebuffer/framebuffer.h"
 #include <string.h>
 
+/* Inicializa a struct do boss Copycat (inimigo que imita as acoes do jogador com delay) */
 void copycat_iniciar(copycat_t *cc, int px, int py) {
     memset(cc, 0, sizeof(copycat_t));
     cc->px = px;
@@ -13,6 +15,7 @@ void copycat_iniciar(copycat_t *cc, int px, int py) {
     cc->flash_frames = 0;
 }
 
+/* Salva o estado atual do jogador (posicao invertida, tiro, mira) num buffer circular */
 void copycat_registrar_estado_jogador(copycat_t *cc, const jogador_t *j, int fire_clique, int fire_forte_clique, float dx, float dy) {
     if (cc->morto) return;
     
@@ -33,12 +36,13 @@ void copycat_registrar_estado_jogador(copycat_t *cc, const jogador_t *j, int fir
     }
 }
 
+/* Pega o estado mais antigo salvo no buffer e aplica no Copycat, fazendo-o se mover atrasado */
 void copycat_atualizar(copycat_t *cc) {
     if (cc->flash_frames > 0) cc->flash_frames--;
     if (cc->morto) return;
 
     if (cc->history_count == COPYCAT_DELAY) {
-        // Le o estado mais antigo
+        /* Le o estado mais antigo do historico e aplica ao boss */
         copycat_state_t oldest = cc->history[cc->history_index];
         cc->px = oldest.px;
         cc->py = oldest.py;
@@ -47,6 +51,7 @@ void copycat_atualizar(copycat_t *cc) {
     }
 }
 
+/* Subtrai a vida do Copycat e ativa os frames de piscar em vermelho */
 void copycat_receber_dano(copycat_t *cc, int dano) {
     if (cc->morto || dano <= 0) return;
     
@@ -59,6 +64,7 @@ void copycat_receber_dano(copycat_t *cc, int dano) {
     }
 }
 
+/* Desenha o Copycat. Se ele estiver morto, desenha invertido. Vivo, tem filtro (tint) roxo */
 void copycat_desenhar(const copycat_t *cc, int camera_x, int camera_y) {
     if (!cc->frame_atual) return;
     
@@ -74,11 +80,12 @@ void copycat_desenhar(const copycat_t *cc, int camera_x, int camera_y) {
     if (cc->flash_frames > 0) {
         sprite_draw_colorido(cc->frame_atual, x, y, espelhado, fb_rgb(255, 40, 40));
     } else {
-        // Roxo: fb_rgb(148, 0, 211)
+        /* Aplica o filtro de cor Roxo no sprite original do heroi: fb_rgb(148, 0, 211) */
         sprite_draw_tint(cc->frame_atual, x, y, espelhado, fb_rgb(148, 0, 211), 0.6f);
     }
 }
 
+/* Retorna a hitbox do Copycat um pouco menor que o frame original, pra colisao ficar mais justa */
 retangulo_t copycat_hitbox(const copycat_t *cc) {
     retangulo_t r;
     r.x = cc->px + 10;

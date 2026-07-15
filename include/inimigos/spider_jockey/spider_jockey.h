@@ -1,3 +1,5 @@
+/* Inimigo boss Spider Jockey */
+
 #ifndef SPIDER_JOCKEY_H
 #define SPIDER_JOCKEY_H
 
@@ -7,61 +9,47 @@
 #include "cenario/cenario.h"
 #include "framebuffer/framebuffer.h"
 
-/* ================================================================
- * Spider Jockey — Inimigo da Fase 2
- *
- * Comportamento:
- *  - Mais rapido e com maior alcance de patrulha que o soldado.
- *  - Dispara flechas em trajetoria parabolica calculada para acertar
- *    a posicao atual do alvo no momento do disparo.
- *  - Animacao de morte: sprite invertido (de cabeca para baixo) com
- *    tint vermelho, sem explosao separada.
- * ================================================================ */
+/* Spider Jockey - inimigo da fase 2.
+   Anda mais rapido que o soldado e atira flechas em arco (parabolicas). */
 
-/* Constantes de movimento — ajuste fino aqui sem mexer na logica */
-#define SJ_VELOCIDADE          3      /* px/frame de caminhada (3x soldado) */
-#define SJ_ALCANCE_PATRULHA    600    /* distancia horizontal maxima para seguir */
-#define SJ_ALCANCE_TIRO        400    /* distancia maxima para atirar (px) */
-#define SJ_VIDA                8      /* pontos de vida */
-#define SJ_INTERVALO_TIRO      200    /* frames entre disparos (~2s a 60fps) */
+/* Parametros de movimento */
+#define SJ_VELOCIDADE          3      /* velocidade de caminhada em px/frame */
+#define SJ_ALCANCE_PATRULHA    600    /* distancia max que ele segue o jogador */
+#define SJ_ALCANCE_TIRO        400    /* distancia max pra ele atirar */
+#define SJ_VIDA                8
+#define SJ_INTERVALO_TIRO      200    /* frames entre cada tiro */
 
-/* Fisica da flecha parabolica (mesmas unidades do engine: px e frames)
- * Com T=25 e g=0.25, o angulo de lancamento e ~21 graus para alvo a 200px
- * na mesma altura. Mais longe = angulo menor (mais raso); mais perto = mais alto.
- * Formula: angulo = atan2(0.5*g*T, dx/T) */
-#define SJ_FLECHA_GRAVIDADE    0.027777f /* aceleracao gravitacional por frame^2 (~1/9 original) */
-#define SJ_FLECHA_TEMPO_VOO    75     /* frames alvo para o tempo de voo da flecha (3x mais longo/lento) */
-#define SJ_FLECHA_VIDA         240    /* frames antes da flecha sumir se nao acertar (3x mais longo) */
+/* Parametros da flecha */
+#define SJ_FLECHA_GRAVIDADE    0.027777f /* gravidade aplicada na flecha por frame */
+#define SJ_FLECHA_TEMPO_VOO    75     /* tempo estimado de voo em frames */
+#define SJ_FLECHA_VIDA         240    /* frames ate a flecha sumir sozinha */
 
-/* Dano da flecha: proporcional a velocidade relativa (mecanica Minecraft) */
-#define SJ_FLECHA_DANO_BASE    1      /* dano minimo */
-#define SJ_FLECHA_DANO_MAX     3      /* dano maximo (se o heroi correr de encontro) */
-#define SJ_FLECHA_DANO_ESCALA  80.0f  /* divisor de px/frame para normalizar o dano */
+/* Dano da flecha */
+#define SJ_FLECHA_DANO_BASE    1
+#define SJ_FLECHA_DANO_MAX     3
+#define SJ_FLECHA_DANO_ESCALA  80.0f  /* fator de normalizacao do dano */
 
-/* Frames de pose de ataque visiveis apos disparo */
+/* Timers de animacao */
 #define SJ_POSE_ATIRAR_FRAMES  18
-/* Frames de flash vermelho ao tomar dano */
 #define SJ_FLASH_FRAMES        8
-/* Frames da animacao de morte (invertida) */
 #define SJ_MORTE_FRAMES        40
 
 typedef enum {
-    SJ_ESTADO_CAINDO,      /* entrando pelo paraquedas (igual soldado) */
-    SJ_ESTADO_CHAO,        /* patrulhando / atirando */
-    SJ_ESTADO_PULANDO,     /* saltando para plataformas */
-    SJ_ESTADO_MORRENDO     /* animacao de morte — sprite invertido + tint */
+    SJ_ESTADO_CAINDO,   /* caindo de paraquedas */
+    SJ_ESTADO_CHAO,     /* andando e atirando */
+    SJ_ESTADO_PULANDO,
+    SJ_ESTADO_MORRENDO
 } sj_estado_t;
 
-/* Pool de flechas parabolicas: cada flecha tem sua propria velocidade vertical
-   porque a parabolica e calculada individualmente no momento do disparo. */
+/* Cada flecha tem velocidade propria porque o arco e calculado na hora do disparo */
 #define SJ_FLECHAS_MAX 8
 
 typedef struct {
     float x, y;
-    float vx, vy;      /* velocidades em px/frame; vy aumenta com gravidade */
+    float vx, vy;      /* velocidade em px/frame */
     int   ativo;
-    int   vida;        /* frames restantes antes de sumir */
-    int   espelhada;   /* 1 se a flecha vai para a esquerda */
+    int   vida;        /* frames restantes */
+    int   espelhada;   /* 1 = indo pra esquerda */
     const sprite_frame_t *sprite;
 } sj_flecha_t;
 
@@ -75,10 +63,10 @@ typedef struct {
     animacao_t anim_idle;
     animacao_t anim_andar;
     animacao_t anim_atirar;
-    animacao_t anim_morrer;     /* mesmos frames de idle — desenhados invertidos */
+    animacao_t anim_morrer;
     animacao_t anim_paraquedas;
     int atirando_pose_frames;
-    int morte_timer;            /* contador para durar a animacao de morte */
+    int morte_timer;
 
     int vida;
     int flash_frames;
@@ -88,17 +76,11 @@ typedef struct {
     int comportamento; /* 0 = seguir, 1 = parado, 2 = afastar */
     int cooldown_tiro;
 
-    /* Sprite da flecha (ponteiro para o frame unico convertido) */
     const sprite_frame_t *sprite_flecha;
-
-    /* Pool de flechas parabolicas propria deste inimigo */
     sj_flecha_t flechas[SJ_FLECHAS_MAX];
 } spider_jockey_t;
 
-/* Inicializa o spider jockey.
-   - idle/andar/atirar/paraquedas: frames da animacao (ja convertidos para RGB565)
-   - sprite_flecha: frame unico da flecha (spider_jockey_arrow_CNV)
-   - chao_y: coordenada Y do chao onde ele vai pousar */
+/* Inicializa o spider jockey na posicao (px, py) com chao em chao_y */
 void sj_iniciar(spider_jockey_t *sj,
                 int px, int py, int chao_y,
                 const sprite_frame_t *idle_frames,    int idle_count,
@@ -107,30 +89,27 @@ void sj_iniciar(spider_jockey_t *sj,
                 const sprite_frame_t *paraquedas_frames, int paraquedas_count,
                 const sprite_frame_t *sprite_flecha);
 
-/* Atualiza posicao, IA, flechas parabolicas. Coordenadas em espaco de MUNDO.
-   alvo_vx / alvo_vy: velocidade do heroi neste frame (para calculo de dano). */
+/* Atualiza IA, posicao e flechas. Recebe posicao e velocidade do jogador */
 void sj_atualizar(spider_jockey_t *sj,
                   int alvo_x, int alvo_y,
                   float alvo_vx, float alvo_vy,
                   const cenario_t *cenario);
 
-/* Desenha o spider jockey e suas flechas deslocados pela camera. */
+/* Desenha o spider jockey e suas flechas na tela */
 void sj_desenhar(const spider_jockey_t *sj, int camera_x, int camera_y);
 
-/* Retangulo de colisao do corpo do spider jockey (espaco de mundo). */
+/* Retorna a hitbox do spider jockey */
 retangulo_t sj_hitbox(const spider_jockey_t *sj);
 
-/* Verifica colisao das flechas com um retangulo alvo.
-   Retorna o dano total causado (0 se nenhuma flecha acertou).
-   Leva em conta a mecanica de dano proporcional a velocidade. */
+/* Verifica se alguma flecha acertou o alvo. Retorna o dano total */
 int sj_flechas_colidir(spider_jockey_t *sj,
                        retangulo_t alvo,
                        float alvo_vx, float alvo_vy);
 
-/* Aplica dano; inicia animacao de morte se vida <= 0. */
+/* Aplica dano no spider jockey */
 void sj_receber_dano(spider_jockey_t *sj, int dano);
 
-/* 1 quando a animacao de morte terminou (pode ser removido do jogo). */
+/* Retorna 1 se o spider jockey ja morreu e pode ser removido */
 int sj_esta_morto(const spider_jockey_t *sj);
 
-#endif /* SPIDER_JOCKEY_H */
+#endif

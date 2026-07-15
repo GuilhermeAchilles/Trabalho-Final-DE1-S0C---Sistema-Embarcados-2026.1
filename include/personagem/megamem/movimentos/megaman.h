@@ -1,3 +1,5 @@
+/* Centraliza os sprites do MegaMan */
+
 #ifndef MEGAMAN_H
 #define MEGAMAN_H
 

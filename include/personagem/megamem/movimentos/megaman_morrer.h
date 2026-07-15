@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: morrer */
+
 #ifndef SPRITES_MEGAMAN_MORRER_H
 #define SPRITES_MEGAMAN_MORRER_H
 

@@ -1,3 +1,4 @@
+/* Utilidade: Desenho dos elementos de interface na tela (mira, icones, barra de vida) */
 #include "ui/ui.h"
 #include "framebuffer/framebuffer.h"
 #include "sprite/sprite.h"
@@ -18,7 +19,7 @@ void desenhar_linha_horizontal(int x0, int x1, int y, fb_color_t cor) {
     }
 }
 
-/* Ponto onde a reta (x0,y0)-(x1,y1) cruza a linha horizontal y. */
+/* Retorna a coordenada x onde a reta cruza a linha y */
 static int intersecao_x(int x0, int y0, int x1, int y1, int y) {
     if (y0 == y1) return x0;
     return x0 + (int)((float)(x1 - x0) * (float)(y - y0) / (float)(y1 - y0));
@@ -52,10 +53,10 @@ void desenhar_triangulo_preenchido(int x0, int y0, int x1, int y1, int x2, int y
     }
 }
 
-/* Triangulo apontando na direcao (dx, dy) - normalizado -, saindo de (cx, cy). */
+/* Desenha um triangulo apontando para a direcao da mira */
 void desenhar_mira(int cx, int cy, float dx, float dy, fb_color_t cor) {
-    const int distancia = 40; /* quao longe a ponta fica do centro */
-    const int tamanho    = 3; /* "largura" da base do triangulo */
+    const int distancia = 40; /* Distancia do centro */
+    const int tamanho    = 3; /* Largura da base */
 
     float perp_x = -dy;
     float perp_y = dx;
@@ -71,7 +72,7 @@ void desenhar_mira(int cx, int cy, float dx, float dy, fb_color_t cor) {
     desenhar_triangulo_preenchido(ponta_x, ponta_y, base1_x, base1_y, base2_x, base2_y, cor);
 }
 
-/* Uma fileira de quadrados no canto superior esquerdo - um por vida, apagado quando perdida. */
+/* Desenha os quadrados de vida no canto superior esquerdo */
 void desenhar_vida(int vida, int vida_maxima) {
     const int tamanho = 8;
     const int espaco  = 2;
@@ -87,9 +88,7 @@ void desenhar_vida(int vida, int vida_maxima) {
     }
 }
 
-/* Fonte numerica minima (3x5 pixels por digito) - o projeto ainda nao tem um sistema
-   de texto/fonte de verdade, entao os digitos do contador de inimigos sao desenhados
-   direto como blocos, no mesmo estilo dos outros desenhos primitivos deste arquivo. */
+/* Fonte numerica basica em formato de matriz de bits (3x5) */
 static const uint8_t FONTE_DIGITOS[10][5] = {
     {0b111, 0b101, 0b101, 0b101, 0b111}, /* 0 */
     {0b010, 0b110, 0b010, 0b010, 0b111}, /* 1 */
@@ -115,7 +114,7 @@ static void desenhar_digito(int digito, int x, int y, int escala, fb_color_t cor
     }
 }
 
-/* Numero de 0 a 99, sempre com 2 digitos (zero a esquerda se precisar). */
+/* Desenha um numero limitando entre 0 e 99 (2 digitos) */
 void desenhar_numero_2_digitos(int numero, int x, int y, int escala, fb_color_t cor) {
     if (numero < 0) numero = 0;
     if (numero > 99) numero = 99;
@@ -127,14 +126,14 @@ void desenhar_numero_2_digitos(int numero, int x, int y, int escala, fb_color_t 
     desenhar_digito(numero % 10, x + largura_digito + espaco, y, escala, cor);
 }
 
-/* Registra a borda de subida de um botao/tecla (true so no frame em que ele acabou de ser pressionado). */
+/* Desenha os icones de power-up no cenario */
 void desenhar_icones(int camera_x, int camera_y, int frame_contador) {
     for (int i = 0; i < MAX_ICONES; i++) {
         if (!icones_mapa[i].ativo) continue;
         int tela_x = icones_mapa[i].px - camera_x;
         int tela_y = icones_mapa[i].py - camera_y;
         
-        /* faz o icone flutuar levemente */
+        /* Faz o icone flutuar levemente */
         int flutuar = (int)(sin(frame_contador * 0.1f) * 3.0f);
         tela_y += flutuar;
 
@@ -170,7 +169,7 @@ void desenhar_icones(int camera_x, int camera_y, int frame_contador) {
 static void desenhar_barra_ui(const sprite_frame_t *frame, int dx, int dy, int fill_w, fb_color_t fill_color) {
     for (int y = 0; y < frame->height; y++) {
         for (int x = 0; x < frame->width; x++) {
-            int src_x = frame->width - 1 - x; /* espelhar a barra */
+            int src_x = frame->width - 1 - x; /* Espelhar a barra */
             uint16_t pixel = frame->pixels[y * frame->width + src_x];
             
             if (pixel != 0xF81F) {
@@ -269,7 +268,7 @@ void desenhar_texto(const char *texto, int x, int y, int escala, fb_color_t cor)
     int cur_x = x;
     while (*texto) {
         char c = *texto++;
-        if (c >= 'a' && c <= 'z') c -= 32; // upper
+        if (c >= 'a' && c <= 'z') c -= 32; /* Converte para maiusculo */
         for (int linha = 0; linha < 5; linha++) {
             uint8_t bits = FONTE_LETRAS[(unsigned char)c][linha];
             for (int col = 0; col < 3; col++) {
@@ -279,7 +278,7 @@ void desenhar_texto(const char *texto, int x, int y, int escala, fb_color_t cor)
                 }
             }
         }
-        cur_x += 4 * escala; // 3 width + 1 space
+        cur_x += 4 * escala; /* 3 pixels de largura + 1 de espaco */
     }
 }
 

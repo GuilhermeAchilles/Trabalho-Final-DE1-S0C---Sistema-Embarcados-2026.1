@@ -1,3 +1,5 @@
+/* Funcoes de desenho da interface (UI) */
+
 #ifndef UI_H
 #define UI_H
 
@@ -5,6 +7,7 @@
 #include "personagem/jogador.h"
 #include "inimigo/inimigo.h"
 
+/* Tipos de power-up que podem cair dos inimigos */
 typedef enum {
     ICONE_VIDA,
     ICONE_VELOCIDADE,
@@ -12,6 +15,7 @@ typedef enum {
     ICONE_SUPER_PULO
 } tipo_icone_t;
 
+/* Icone de power-up no mapa */
 typedef struct {
     int px, py;
     tipo_icone_t tipo;
@@ -21,6 +25,7 @@ typedef struct {
 #define MAX_ICONES 16
 extern icone_t icones_mapa[MAX_ICONES];
 
+/* Funcoes de desenho de UI */
 void desenhar_linha_horizontal(int x0, int x1, int y, fb_color_t cor);
 void desenhar_triangulo_preenchido(int x0, int y0, int x1, int y1, int x2, int y2, fb_color_t cor);
 void desenhar_mira(int cx, int cy, float dx, float dy, fb_color_t cor);

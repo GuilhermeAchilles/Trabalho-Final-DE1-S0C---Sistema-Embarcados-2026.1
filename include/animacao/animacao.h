@@ -1,3 +1,5 @@
+/* Estruturas e funcoes para controle de animacoes 2D */
+
 #ifndef ANIMACAO_H
 #define ANIMACAO_H
 

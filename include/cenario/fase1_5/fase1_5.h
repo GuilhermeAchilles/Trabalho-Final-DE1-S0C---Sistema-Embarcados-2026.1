@@ -1,3 +1,5 @@
+/* Mapas de pixel da Fase 1.5 (transicao) */
+
 #ifndef FASE1_5_H
 #define FASE1_5_H
 

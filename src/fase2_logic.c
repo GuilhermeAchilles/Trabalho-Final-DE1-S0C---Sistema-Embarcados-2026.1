@@ -1,3 +1,4 @@
+/* Utilidade: Loop de gameplay e mecanicas especificas da Fase 2 */
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
@@ -13,35 +14,25 @@
 #include "personagem/jogador.h"
 #include "ataques/tiros/tiro.h"
 
-/* Spider Jockey — inimigo da Fase 2 */
 #include "inimigos/spider_jockey/spider_jockey.h"
 #include "inimigos/spider_jockey/spider_jockey_sprites.h"
-
-/* Soldados genéricos ainda são usados como "paraquedistas de apoio"
-   (comportamento de paraquedas herdado do sistema original) */
 #include "inimigos/soldado/soldado.h"
 #include "inimigo/inimigo.h"
 
 #include "ui/ui.h"
 #include "hardware/hardware_state.h"
 
-/* ---------------------------------------------------------------- */
-/* Constantes da fase                                               */
-/* ---------------------------------------------------------------- */
-#define FASE2_TOTAL_INIMIGOS    10   /* spider jockeys a matar */
-#define SJ_SIMULTANEOS           5   /* spider jockeys no mapa ao mesmo tempo */
+/* Constantes da fase 2 */
+#define FASE2_TOTAL_INIMIGOS    10   /* total de inimigos para matar */
+#define SJ_SIMULTANEOS           5   /* limite de inimigos na tela ao mesmo tempo */
 
-/* ---------------------------------------------------------------- */
-/* Slot de spider jockey                                            */
-/* ---------------------------------------------------------------- */
+/* Slot para guardar o estado de cada spider jockey (ativo ou nao) */
 typedef struct {
     spider_jockey_t sj;
     int ativo;
 } sj_slot_t;
 
-/* ---------------------------------------------------------------- */
-/* Spawn                                                            */
-/* ---------------------------------------------------------------- */
+/* Spawna um inimigo em um local aleatorio no chao */
 static void spawnar_sj(sj_slot_t *slot, const cenario_t *c) {
     int x    = 20 + (rand() % (c->largura - 60));
     int chao = cenario_chao_y(c, x + SPIDER_JOCKEY_FRAME_WIDTH / 2, 0);
@@ -57,9 +48,7 @@ static void spawnar_sj(sj_slot_t *slot, const cenario_t *c) {
     slot->ativo = 1;
 }
 
-/* ---------------------------------------------------------------- */
-/* Desenho da cena                                                  */
-/* ---------------------------------------------------------------- */
+/* Desenha todos os elementos da cena (cenario, inimigos, UI, etc) */
 static void desenhar_cena_fase_2(const cenario_t *c, const jogador_t *j,
                                   const tiros_t *tiros,
                                   const sj_slot_t *slots, int total_slots,
@@ -93,9 +82,7 @@ static void desenhar_cena_fase_2(const cenario_t *c, const jogador_t *j,
     fb_present();
 }
 
-/* ---------------------------------------------------------------- */
-/* Loop principal da Fase 2                                         */
-/* ---------------------------------------------------------------- */
+/* Loop principal da Fase 2 (roda ate o jogador morrer ou passar de fase) */
 int rodar_fase_2(jogador_t *jogador) {
     cenario_t cenario;
     cenario_iniciar(&cenario, fase2_bg, fase2_fg, fase2_colisao,
@@ -178,13 +165,11 @@ int rodar_fase_2(jogador_t *jogador) {
         }
         tiros_atualizar(&tiros);
 
-        /* Velocidade do heroi para calculo de dano direcional das flechas.
-           vel_x nao esta exposto na jogador_t — usamos 0.0f para horizontal
-           (o dano direcional pelo eixo Y ainda funciona via heroi_vy). */
+        /* Velocidades usadas para calcular dano das flechas */
         float heroi_vx = 0.0f;
         float heroi_vy = jogador->vel_y;
 
-        /* --- Atualiza spider jockeys --- */
+        /* Atualiza spider jockeys */
         for (int i = 0; i < SJ_SIMULTANEOS; i++) {
             sj_slot_t *slot = &slots[i];
             if (!slot->ativo) continue;
@@ -263,3 +248,4 @@ int rodar_fase_2(jogador_t *jogador) {
 
     return venceu;
 }
+

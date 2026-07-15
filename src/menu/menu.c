@@ -1,6 +1,8 @@
+/* Utilidade: Loop inicial do Menu, pisca o Press Start e aguarda o jogador */
 #include "menu/menu.h"
 #include "framebuffer/framebuffer.h"
 
+/* Loop da tela principal do menu. Desenha o fundo e aguarda o jogador apertar START para jogar */
 int tela_menu(void) {
     int iniciar = 0;
     int frame_counter = 0;
@@ -11,10 +13,10 @@ int tela_menu(void) {
             }
         }
         
-        // Blink logic: show for 30 frames, hide for 30 frames
+        /* Logica de piscar (Blink): mostra o texto por 30 frames e esconde por 30 frames */
         if ((frame_counter / 30) % 2 == 0) {
             int start_x = (MENU_WIDTH - PRESS_START_WIDTH) / 2;
-            int start_y = MENU_HEIGHT - PRESS_START_HEIGHT - 20; // 20 pixels from bottom
+            int start_y = MENU_HEIGHT - PRESS_START_HEIGHT - 20; /* Margem de 20 pixels da borda inferior */
             for (int y = 0; y < PRESS_START_HEIGHT; y++) {
                 for (int x = 0; x < PRESS_START_WIDTH; x++) {
                     uint16_t color = press_start_data[y * PRESS_START_WIDTH + x];

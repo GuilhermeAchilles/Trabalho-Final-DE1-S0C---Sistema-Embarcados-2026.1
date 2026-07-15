@@ -1,8 +1,4 @@
-/* ==========================================================
- * C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\spider_jockey_CNV.c
- * Gerado automaticamente por convert_to_rgb565.py
- * Fonte: C:\Users\pedro\Desktop\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\novos\spider_jockey_anm.c | 58x50 | 3 frame(s) | Escala 1x
- * ========================================================== */
+/* Sprite: Animacao do Spider Jockey */
 
 #ifndef SPIDER_JOCKEY_CNV_H
 #define SPIDER_JOCKEY_CNV_H

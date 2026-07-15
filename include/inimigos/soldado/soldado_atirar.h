@@ -1,3 +1,5 @@
+/* Sprite: Soldado atirando */
+
 #ifndef SPRITES_SOLDADO_ATIRAR_H
 #define SPRITES_SOLDADO_ATIRAR_H
 

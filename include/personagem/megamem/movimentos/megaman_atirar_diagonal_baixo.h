@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: atirar diagonal inferior */
+
 #ifndef SPRITES_MEGAMAN_ATIRAR_DIAGONAL_BAIXO_H
 #define SPRITES_MEGAMAN_ATIRAR_DIAGONAL_BAIXO_H
 

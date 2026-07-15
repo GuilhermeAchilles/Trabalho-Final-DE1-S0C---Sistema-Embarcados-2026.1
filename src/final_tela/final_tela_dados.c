@@ -1,3 +1,4 @@
+/* Utilidade: Arquivo: final_tela_dados.c */
 #include <stdint.h>
 
 const uint16_t final_tela_bg[76800] = {

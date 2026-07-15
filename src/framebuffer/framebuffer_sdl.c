@@ -1,3 +1,4 @@
+/* Utilidade: Backend para teste em PC: emula a tela da FPGA usando a biblioteca SDL2 */
 #include "framebuffer/framebuffer.h"
 #include <SDL2/SDL.h>
 #include "hardware/hardware_state.h"
@@ -10,6 +11,7 @@ static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 static fb_color_t pixels[FB_WIDTH * FB_HEIGHT];
 
+/* Inicia a janela do SDL emulando a resolucao da FPGA (320x240 ampliada 3x) */
 void fb_init(void) {
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -29,6 +31,7 @@ void fb_init(void) {
     );
 }
 
+/* Fecha a janela do SDL e desliga o sistema de video local */
 void fb_shutdown(void) {
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
@@ -36,17 +39,20 @@ void fb_shutdown(void) {
     SDL_Quit();
 }
 
+/* Pinta o buffer de memoria com uma unica cor (usado pra apagar o frame antigo) */
 void fb_clear(fb_color_t color) {
     for (int i = 0; i < FB_WIDTH * FB_HEIGHT; i++) {
         pixels[i] = color;
     }
 }
 
+/* Pinta um unico pixel (x,y) na tela virtual. A origem (0,0) eh no topo esquerdo */
 void fb_put_pixel(int x, int y, fb_color_t color) {
     if (x < 0 || x >= FB_WIDTH || y < 0 || y >= FB_HEIGHT) return;
     pixels[y * FB_WIDTH + x] = color;
 }
 
+/* Joga a imagem criada na RAM para a tela real do SDL, e limita a velocidade a ~60 FPS */
 void fb_present(void) {
     SDL_UpdateTexture(texture, NULL, pixels, FB_WIDTH * sizeof(fb_color_t));
     SDL_RenderClear(renderer);
@@ -56,12 +62,13 @@ void fb_present(void) {
     static Uint32 last_frame_time = 0;
     Uint32 current_time = SDL_GetTicks();
     Uint32 frame_time = current_time - last_frame_time;
-    if (frame_time < 16) { // Limita a ~60 FPS
+    if (frame_time < 16) { /* Limita a ~60 FPS */
         SDL_Delay(16 - frame_time);
     }
     last_frame_time = SDL_GetTicks();
 }
 
+/* Retorna 1 se o usuario fechou a janela ou apertou a tecla Esc */
 int fb_poll_quit(void) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -76,6 +83,7 @@ int fb_poll_quit(void) {
     return 0;
 }
 
+/* Mapeia os comandos do jogo (ex: PULO, TIRO) para as teclas fisicas do PC via SDL */
 int fb_key_down(fb_key_t key) {
     const uint8_t *keys = SDL_GetKeyboardState(NULL);
 
@@ -99,6 +107,7 @@ int fb_key_down(fb_key_t key) {
     return 0;
 }
 
+/* Pega a coordenada do mouse e ajusta de acordo com o tamanho da janela (escala) */
 void fb_mouse_pos(int *x, int *y) {
     int wx, wy;
     float lx, ly;

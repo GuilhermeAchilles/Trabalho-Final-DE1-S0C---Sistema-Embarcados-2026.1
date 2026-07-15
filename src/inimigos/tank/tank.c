@@ -1,7 +1,9 @@
+/* Utilidade: Comportamento do Tank: maquina que atira Goombas no ar */
 #include "inimigos/tank/tank.h"
 #include <string.h>
 #include <stdlib.h>
 
+/* Inicializa a struct do Tanque, carregando as animacoes de parado (idle) e tiro */
 void tank_iniciar(tank_t *t, int px, int py) {
     memset(t, 0, sizeof(tank_t));
     t->px = px;
@@ -9,11 +11,12 @@ void tank_iniciar(tank_t *t, int px, int py) {
     t->estado = TANK_IDLE;
     
     animacao_iniciar(&t->anim_idle, tank_idle_frames, TANK_IDLE_FRAME_COUNT, 20, 1);
-    animacao_iniciar(&t->anim_shooting, tank_shooting_frames, TANK_SHOOTING_FRAME_COUNT, 8, 0); // Nao repete automaticamente
+    animacao_iniciar(&t->anim_shooting, tank_shooting_frames, TANK_SHOOTING_FRAME_COUNT, 8, 0); /* Nao repete (sem loop) */
     t->frame_death = &tank_death_frames[0];
     t->timer = 0;
 }
 
+/* Atualiza a IA do Tanque: alterna entre idle e tiro. O tiro dele lança um Goomba pelo ar! */
 void tank_atualizar(tank_t *t, goomba_t *goombas, int num_goombas, int jogador_x) {
     if (t->estado == TANK_DEATH) return;
 
@@ -21,8 +24,8 @@ void tank_atualizar(tank_t *t, goomba_t *goombas, int num_goombas, int jogador_x
         animacao_atualizar(&t->anim_idle);
         t->timer++;
         
-        // Apos certo tempo idle, atira
-        if (t->timer > 20) { // 1 segundo (2x mais rapido)
+        /* Apos certo tempo parado (idle), inicia a animacao de disparo */
+        if (t->timer > 20) { /* ~300ms de intervalo (20 frames) */
             t->estado = TANK_SHOOTING;
             t->atirou_neste_ciclo = 0;
             animacao_iniciar(&t->anim_shooting, tank_shooting_frames, TANK_SHOOTING_FRAME_COUNT, 25, 0);
@@ -31,13 +34,13 @@ void tank_atualizar(tank_t *t, goomba_t *goombas, int num_goombas, int jogador_x
     else if (t->estado == TANK_SHOOTING) {
         animacao_atualizar(&t->anim_shooting);
         
-        // Verifica frames 9-10 (indice 9 e 10) para disparar
+        /* O tiro sai exatamente nos frames 9 ou 10 da animacao do canhao disparando */
         if ((t->anim_shooting.frame_atual == 9 || t->anim_shooting.frame_atual == 10) && !t->atirou_neste_ciclo) {
-            // Encontra goomba livre
+            /* Procura um Goomba inativo no pool de inimigos para usa-lo como projetil */
             for (int i = 0; i < num_goombas; i++) {
                 if (goombas[i].estado == GOOMBA_INATIVO) {
-                    float launch_vx = -10.0f - ((rand() % 20) / 10.0f); // -4.0 a -6.0
-                    float launch_vy = -10.0f - ((rand() % 20) / 10.0f); // -14.0 a -16.0
+                    float launch_vx = -10.0f - ((rand() % 20) / 10.0f); /* Lanca pra cima e pra tras */
+                    float launch_vy = -10.0f - ((rand() % 20) / 10.0f); /* Parabola acentuada */
                     
                     int tiro_x = t->px - TANK_SHOOTING_FRAME_WIDTH + 60;
                     int tiro_y = t->py - (TANK_SHOOTING_FRAME_HEIGHT * 2) + 80;
@@ -57,12 +60,12 @@ void tank_atualizar(tank_t *t, goomba_t *goombas, int num_goombas, int jogador_x
     }
 }
 
+/* Desenha o Tanque ampliado 2x na tela, e ajusta a posicao (px,py) que eh ancorada pelo pe/direito */
 void tank_desenhar(const tank_t *t, int camera_x, int camera_y) {
-    int draw_x = t->px - camera_x; // px = canto direito ou centro? Vamos assumir px = canto inferior esquerdo/centro
-    int draw_y = t->py - camera_y; // py = pe
+    int draw_x = t->px - camera_x; /* px = canto inferior direito */
+    int draw_y = t->py - camera_y; /* py = colisao com o chao (pe) */
     
-    // As sprites do tanque apontam para a esquerda (original)
-    // Logo, espelhado = 0
+    /* As sprites originais do tanque ja apontam para a esquerda, logo espelhado = 0 */
     int espelhado = 0;
     
     const sprite_frame_t *f = NULL;

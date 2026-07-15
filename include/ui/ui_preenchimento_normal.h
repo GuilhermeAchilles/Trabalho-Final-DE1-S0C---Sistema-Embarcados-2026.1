@@ -1,3 +1,5 @@
+/* Sprite: UI Preenchimento tiro normal */
+
 #ifndef SPRITES_UI_PREENCHIMENTO_NORMAL_H
 #define SPRITES_UI_PREENCHIMENTO_NORMAL_H
 

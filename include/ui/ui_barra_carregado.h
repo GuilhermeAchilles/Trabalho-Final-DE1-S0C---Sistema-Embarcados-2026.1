@@ -1,3 +1,5 @@
+/* Sprite: UI Barra de tiro carregado */
+
 #ifndef SPRITES_UI_BARRA_CARREGADO_H
 #define SPRITES_UI_BARRA_CARREGADO_H
 

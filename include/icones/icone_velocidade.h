@@ -1,3 +1,5 @@
+/* Sprite: Icone de power-up Velocidade */
+
 #ifndef SPRITES_ICONE_VELOCIDADE_H
 #define SPRITES_ICONE_VELOCIDADE_H
 

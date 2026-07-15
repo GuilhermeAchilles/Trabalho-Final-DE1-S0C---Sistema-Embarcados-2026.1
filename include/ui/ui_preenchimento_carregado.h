@@ -1,3 +1,5 @@
+/* Sprite: UI Preenchimento tiro carregado */
+
 #ifndef SPRITES_UI_PREENCHIMENTO_CARREGADO_H
 #define SPRITES_UI_PREENCHIMENTO_CARREGADO_H
 

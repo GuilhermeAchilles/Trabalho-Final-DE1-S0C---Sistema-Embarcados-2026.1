@@ -1,3 +1,5 @@
+/* Sprite: MegaMan - acao: atirar para cima */
+
 #ifndef SPRITES_MEGAMAN_ATIRAR_CIMA_H
 #define SPRITES_MEGAMAN_ATIRAR_CIMA_H
 

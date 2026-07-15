@@ -1,3 +1,5 @@
+/* Sprite: Soldado caindo de paraquedas */
+
 #ifndef SPRITES_SOLDADO_PARAQUEDAS_H
 #define SPRITES_SOLDADO_PARAQUEDAS_H
 

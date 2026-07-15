@@ -1,3 +1,5 @@
+/* Sprite: Projetil tiro simples do MegaMan */
+
 #ifndef SPRITES_MEGAMAN_TIRO_SIMPLES_H
 #define SPRITES_MEGAMAN_TIRO_SIMPLES_H
 

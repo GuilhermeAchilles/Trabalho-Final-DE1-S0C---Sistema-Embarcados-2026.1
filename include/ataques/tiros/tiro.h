@@ -1,3 +1,5 @@
+/* Definicoes e controle de projeteis e tiros */
+
 #ifndef TIRO_H
 #define TIRO_H
 
@@ -6,15 +8,17 @@
 #include "colisao/colisao.h"
 
 #define TIRO_MAX        16
-#define TIRO_VIDA_FRAMES 200 /* apos tantos frames sem acertar nada, o tiro some (mundo pode ser maior que a tela) */
+#define TIRO_VIDA_FRAMES 200 /* frames ate o tiro sumir se nao acertar nada */
 
+/* Define o tipo do tiro (sprite, velocidade e dano) */
 typedef struct
 {
-    const sprite_frame_t *sprite; /* formato/desenho do tiro */
+    const sprite_frame_t *sprite;
     int velocidade;
     int dano;
 } tipo_tiro_t;
 
+/* Um tiro individual ativo no jogo */
 typedef struct
 {
     float x;
@@ -22,10 +26,11 @@ typedef struct
     float dx;
     float dy;
     int ativo;
-    int vida;                     /* frames restantes ate sumir sozinho */
+    int vida;              /* frames restantes ate sumir */
     const tipo_tiro_t *tipo;
 } tiro_t;
 
+/* Lista com todos os tiros ativos */
 typedef struct
 {
     tiro_t tiros[TIRO_MAX];
@@ -33,17 +38,17 @@ typedef struct
 
 void tiros_iniciar(tiros_t *grupo);
 
-/* Dispara um tiro saindo de (x, y) na direcao (dx, dy) - vetor normalizado. */
+/* Cria um tiro na posicao (x, y) indo na direcao (dx, dy) */
 void tiros_disparar(tiros_t *grupo, int x, int y, float dx, float dy, const tipo_tiro_t *tipo);
 
 void tiros_atualizar(tiros_t *grupo);
 
-/* Desenha os tiros deslocados pela camera (camera_x/y = canto da tela no mundo). */
+/* Desenha todos os tiros ativos na tela (com offset da camera) */
 void tiros_desenhar(const tiros_t *grupo, int camera_x, int camera_y);
 
 void tiros_desenhar_tint(const tiros_t *grupo, int camera_x, int camera_y, uint16_t tint_cor, float mix);
 
-/* Desativa todo tiro ativo que colidir com alvo e retorna quantos acertaram. */
+/* Checa se algum tiro acertou o alvo. Retorna quantos acertaram */
 int tiros_colidir_com(tiros_t *grupo, retangulo_t alvo);
 
 #endif
