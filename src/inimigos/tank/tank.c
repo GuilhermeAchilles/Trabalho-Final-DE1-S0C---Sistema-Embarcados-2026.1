@@ -22,7 +22,7 @@ void tank_atualizar(tank_t *t, goomba_t *goombas, int num_goombas, int jogador_x
         t->timer++;
         
         // Apos certo tempo idle, atira
-        if (t->timer > 80) { // 2 segundos
+        if (t->timer > 20) { // 1 segundo (2x mais rapido)
             t->estado = TANK_SHOOTING;
             t->atirou_neste_ciclo = 0;
             animacao_iniciar(&t->anim_shooting, tank_shooting_frames, TANK_SHOOTING_FRAME_COUNT, 25, 0);

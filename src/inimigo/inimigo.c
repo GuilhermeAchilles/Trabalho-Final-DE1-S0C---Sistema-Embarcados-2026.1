@@ -182,6 +182,12 @@ void inimigo_atualizar(inimigo_t *inimigo, tiros_t *tiros, int alvo_x, int alvo_
             anim_atual = &inimigo->anim_idle;
         }
     }
+    /* Nao deixa o inimigo sair pelas laterais do cenario */
+    if (inimigo->px < 0) {
+        inimigo->px = 0;
+    } else if (inimigo->px > cenario->largura - inimigo->frame->width) {
+        inimigo->px = cenario->largura - inimigo->frame->width;
+    }
     
     animacao_atualizar(anim_atual);
     inimigo->frame = animacao_frame_atual(anim_atual);

@@ -29,7 +29,7 @@
 /* Constantes da fase                                               */
 /* ---------------------------------------------------------------- */
 #define FASE2_TOTAL_INIMIGOS    10   /* spider jockeys a matar */
-#define SJ_SIMULTANEOS           3   /* spider jockeys no mapa ao mesmo tempo */
+#define SJ_SIMULTANEOS           5   /* spider jockeys no mapa ao mesmo tempo */
 
 /* ---------------------------------------------------------------- */
 /* Slot de spider jockey                                            */

@@ -302,6 +302,12 @@ void sj_atualizar(spider_jockey_t *sj,
     } else {
         anim_atual = &sj->anim_idle;
     }
+    /* Nao deixa sair das laterais do mapa */
+    if (sj->px < 0) {
+        sj->px = 0;
+    } else if (sj->px > cenario->largura - sj->frame->width) {
+        sj->px = cenario->largura - sj->frame->width;
+    }
 
     animacao_atualizar(anim_atual);
     sj->frame = animacao_frame_atual(anim_atual);

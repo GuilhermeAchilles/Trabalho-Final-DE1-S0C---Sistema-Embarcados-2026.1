@@ -1,80 +1,84 @@
-# Metal Slug - Demake (MegaMan Edition)
+# Metal Slug Demake na DE1-SoC
 
-Um "demake" inspirado em Metal Slug protagonizado pelo MegaMan, desenvolvido inteiramente em **C17** do zero (sem engines externas) com foco na renderização de buffers via CPU. 
+Um "demake" inspirado na mecânica *run-and-gun* clássica da franquia Metal Slug (protagonizado pelo MegaMan), desenvolvido em **C17** do zero (sem engines externas) para rodar nativamente na placa **FPGA DE1-SoC (ARM v7, Linux Embarcado)** manipulando os registradores de Hardware diretamente via mapeamento de memória. 
 
-O principal diferencial arquitetural deste projeto é o seu planejamento híbrido: o jogo roda tanto no **Windows (via SDL2 como mock para o framebuffer)**, quanto nativamente na placa **FPGA DE1-SoC (ARM v7, Linux Embarcado)** se comunicando diretamente com mapeamento de memória em registradores de Hardware!
+O projeto conta com uma arquitetura híbrida: você pode jogar, testar e debugar no seu **PC (Windows/Linux via SDL2)** e compilar o código cruzado (*Cross-Compile*) para a placa alvo!
 
 ---
 
-## 🎮 Como Rodar o Projeto (PC / Windows)
+## 🎮 Como Rodar o Jogo (PC / Windows)
 
-Para compilar e rodar o jogo no seu computador, o projeto utiliza o **CMake** juntamente com o **MinGW64 / MSYS2**.
+Para testar rapidamente o jogo na sua máquina local com interface gráfica usando a SDL2:
 
 ### Pré-requisitos
-1. **MSYS2** instalado em `C:\msys64`
-2. No terminal do MSYS2, instale o compilador C e o SDL2:
+1. **MSYS2** instalado (ex: em `C:\msys64`).
+2. Pacotes no MSYS2 (rode no terminal MSYS2 MinGW64):
    ```bash
    pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-make mingw-w64-x86_64-SDL2
    ```
 
-### Compilando para PC (Windows / SDL2)
-1. Abra um terminal no diretório do projeto.
-2. Certifique-se de que o MSYS2 está no seu PATH (ex: `$env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH` no PowerShell).
-3. Compile o jogo ativando a renderização gráfica no PC:
+### Compilando e Jogando
+1. Abra um terminal PowerShell no diretório do projeto e inclua o MSYS2 no PATH:
+   ```powershell
+   $env:PATH = "C:\msys64\mingw64\bin;" + $env:PATH
+   ```
+2. Crie os arquivos de build da interface para PC e compile:
    ```bash
    cmake -B build
    cmake --build build
    ```
-4. O executável `metalslug.exe` será gerado na pasta `build`. É só rodar!
+3. O executável será gerado em `build/metalslug.exe`. Basta rodar!
 
-### Cross-Compilando para a DE1-SoC (ARM v7) no Windows
-1. Adicione o compilador ARM ao PATH:
-   ```bash
-   export PATH=/c/Users/gollu/Documents/AntiGravity/2_Demake_Slug/Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1/build/arm-gcc/gcc-arm/bin:$PATH
+---
+
+## 🚀 Como Compilar e Transferir para a DE1-SoC (Placa)
+
+O jogo utiliza os periféricos nativos da placa (VGA, Displays de 7-Segmentos, LEDs, Switches e Mouse/Teclado USB).
+
+### 1. Compilando o binário ARM no Windows
+1. Adicione a *toolchain* cruzada do ARM ao seu PATH (substitua pelo seu caminho real):
+   ```powershell
+   $env:PATH = "C:\Users\gollu\Documents\AntiGravity\2_Demake_Slug\Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1\build\arm-gcc\gcc-arm\bin;" + $env:PATH
    ```
-2. Compile desligando a SDL e ativando a toolchain ARM:
+2. Compile desligando o SDL (`-DUSE_SDL_BACKEND=OFF`):
    ```bash
-   cmake -S . -B build_arm -G Ninja -DCMAKE_TOOLCHAIN_FILE=arm_toolchain.cmake -DUSE_SDL_BACKEND=OFF -DCMAKE_BUILD_TYPE=Release
+   cmake -S . -B build_arm -G Ninja -DCMAKE_TOOLCHAIN_FILE=arm_toolchain.cmake -DUSE_SDL_BACKEND=OFF
    cmake --build build_arm
    ```
-3. Envie o binário `metalslug` da pasta `build_arm` para o Linux Embarcado da DE1-SoC e execute como `root`!
+
+### 2. Transferindo para a Placa via Ethernet (TCP)
+Devido ao tamanho do executável, não use cabo Serial para a transferência (pode corromper). Use a porta Ethernet:
+
+1. **Na placa DE1-SoC (Receptor):**
+   Abra a porta e aguarde o arquivo ficar escutando:
+   ```bash
+   nc -l 12345 > metalslug
+   ```
+2. **No seu Computador (Remetente):**
+   Mande o binário com um script Python rápido apontando para o IP da placa (ex: `164.41.179.50`):
+   ```bash
+   python -c "import socket; sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM); sock.connect(('164.41.179.50', 12345)); f = open('build_arm/metalslug', 'rb'); sock.sendall(f.read()); f.close(); sock.close(); print('Transferência Concluída!')"
+   ```
+3. De volta na Placa, dê permissão de execução e inicie o jogo como `root`:
+   ```bash
+   chmod +x metalslug
+   ./metalslug
+   ```
 
 ---
 
-## 🕹️ Controles
+## ⚙️ Fases e Mecânicas
 
-- **A / D**: Andar para Esquerda / Direita
-- **S (Segurar)**: Pular através das plataformas flutuantes
-- **Espaço**: Pulo (Permite Pulo Duplo no ar!)
-- **Mouse**: Mira (Crosshair) livre em 360 graus
-- **Clique Esquerdo**: Tiro Normal (Pistola de plasma). *Cuidado para não atirar sem parar e superaquecer a arma!*
-- **Clique Direito**: Tiro Forte (Espingarda de plasma - Consume 1 carga das barras azuis).
+*   **Fase 1 (Ártico):** Hordas de soldados paraquedistas. Avance para a direita, ou explore o caminho escondido à esquerda para acessar o *Easter Egg*.
+*   **Fase 1.5 (Bônus - Copycat):** Enfrente um chefe que copia todos os seus movimentos com 30 frames de atraso!
+*   **Fase 2 (Cidade Quebrada):** Oponentes "Spider Jockey" que disparam flechas em trajetórias balísticas-parabólicas em tempo real.
+*   **Fase 3 (Bunker - Tank Boss):** Um embate contra o tanque de guerra que lança Goombas dinâmicos pelo canhão superior.
+*   **Power-Ups (Caixas de Loot):** Ao destruir inimigos, há chances de *drops* contendo cura (+2 HP), Super Velocidade/Dano (3x mais forte) e Super Pulo (rastro neon).
+*   **Aquecimento da Arma:** Limite dinâmico de 15 tiros consecutivos. Tiros excessivos travam a arma na cor Laranja por 3 segundos de resfriamento.
 
----
+## 🛠️ Detalhes da Arquitetura de Hardware (DE1-SoC)
 
-## ⚙️ Como o Jogo Funciona (Mecânicas)
-
-- **Fases e Escala:** O jogo foi estruturado com Clean Code para comportar múltiplas fases. Na Fase 1, seu objetivo é sobreviver a hordas até matar **50 Soldados**.
-- **Superaquecimento (Overheat):** Sua arma principal suporta 15 tiros seguidos. Ao chegar no zero, a arma superaquece (o MegaMan vai brilhar de baixo para cima com uma temperatura Laranja) e você ficará impossibilitado de atirar por 3 segundos.
-- **Tiros Fortes:** Você possui 5 cargas de tiros especiais (Espingarda). Quando usadas, demoram cerca de 3 a 5 segundos para recarregar o pente completo.
-- **Dano e Game Over:** Você aguenta 10 hits de vida. Quando sofre dano, o personagem pisca em vermelho intensamente. Se a vida zerar, a animação de morte roda, levando-o a tela de **Game Over**, onde pode recomeçar a fase com o Botão Esquerdo ou Sair com o Botão Direito.
-- **Ícones (Loot):** Os inimigos mortos têm 30% de chance de derrubar caixas, que contêm buffs instantâneos como: Regeneração de Vida, Super Velocidade de Movimento, Instakill (Morte Súbita x3 de Dano) e Super Pulo (deixa o rastro do MegaMan verde neon!).
-
----
-
-## 🛠️ Arquitetura e Port para a FPGA (DE1-SoC Linux)
-
-Este projeto foi desenhado sob a perspectiva do **Princípio da Responsabilidade Única (SRP)**. Não utilizamos bibliotecas prontas como Unity ou Godot. O jogo manipula os pixels manualmente.
-
-Para rodar este jogo num sistema Embarcado, como a placa DE1-SoC (ARM v7) utilizando um Kernel Linux:
-
-1. **Alteração do Driver (VGA) com Double Buffering**:
-   Quando a tag `USE_SDL_BACKEND` é desligada, a Engine compila o backend `framebuffer_de1soc.c`. Ele realiza o acesso ao Controlador VGA via memória (`/dev/mem`). Para evitar que a tela pisque a 60fps (*Tearing*), fazemos o mapeamento duplo das memórias: o Front Buffer (`0xC8000000`) e o Back Buffer (`0xC0000000`). Nós desenhamos os pixels no Buffer oculto e comandamos o registrador `0xFF203020` da placa para trocar de tela no próximo *V-Sync*. Além disso, varremos e limpamos o *Character Buffer* (`0xC9000000`) para apagar textos fantasmas do console Linux!
-
-2. **Displays, LEDs e Chaves (Lightweight Bridge)**:
-   Mapeamos um total de 2MB sobre o barramento HPS-to-FPGA Lightweight Bridge (`0xFF200000`). Interagimos nativamente com o hardware usando aritmética de ponteiros C (ex: `lw_ptr + 0x0` para LEDs e `lw_ptr + 0x20` para os Displays de 7-Seg). A cada frame, os Leds representam graficamente a vida do MegaMan, enquanto os Displays (convertidos nativamente de BCD para 7 Segmentos via código) realizam a contagem regressiva viva de Inimigos restantes. Também criamos uma Thread separada que lê os *Switches* 20 vezes por segundo: levantar a `CHAVE 0` pausa automaticamente toda a engine de colisão e física, congelando o jogo!
-
-3. **Input Físico USB**:
-   O controle pelo mouse e teclado no Linux Embarcado foi idealizado com PThreads em Background que escutam os nós crus do Linux (`/dev/input/mice` e `/dev/input/eventX`).
-
-Toda a lógica de colisões em mapas matriciais, subida de ladeiras e gravidade é feita nativamente por cálculos analíticos na classe `jogador.c`, mantendo a execução levíssima e otimizada para o processador de baixo poder computacional da placa!
+O software interage cruamente com o sistema:
+1. **Vídeo VGA (Shadow Buffering):** O acesso gráfico é feito alocando uma matriz paralela na memória RAM do processador HPS e despejando seu conteúdo diretamente para a base `0xC8000000` (Pixel Buffer) usando `memcpy`. Isso neutraliza o *tearing* (tremulações visuais). 
+2. **Displays e LEDs:** Toda a barra de vida (10 LEDs) e o marcador de inimigos restantes (Hexadecimais) são controlados via ponteiro em C sobre a *Lightweight Bridge* (`0xFF200000`).
+3. **Hardware Pause:** Uma PThread em *background* lê periodicamente a Chave 0 (`SW0`). Ao levantá-la, a atualização física da engine entra em hiato. A entrada USB bruta é extraída diretamente dos nós descritores do Linux (`/dev/input`).

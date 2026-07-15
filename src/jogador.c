@@ -90,8 +90,8 @@ void jogador_receber_dano_knockback(jogador_t *j, int dano, int origem_x) {
     if (j->timer_invulnerabilidade > 0) return;
     jogador_receber_dano(j, dano);
     
-    // Ignora inputs e aplica knockback por 0.5 seg (30 frames)
-    j->timer_invulnerabilidade = 30;
+    // Ignora inputs e aplica knockback por curto periodo (10 frames)
+    j->timer_invulnerabilidade = 10;
     
     // Angulo de 45 graus pra tras (reduzido drasticamente)
     j->vel_y = -3.0f; 
