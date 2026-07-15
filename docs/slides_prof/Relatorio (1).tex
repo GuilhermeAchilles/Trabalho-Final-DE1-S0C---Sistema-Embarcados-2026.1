@@ -1,0 +1,800 @@
+% --- UNIVERSAL PREAMBLE BLOCK ---
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[breaklinks=true,bookmarks=true,colorlinks]{hyperref}
+
+% --- TikZ para os diagramas ---
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning, shapes.geometric, shapes.multipart, fit, backgrounds}
+
+% --- Listings para trechos de código ---
+\usepackage{listings}
+\lstset{
+    basicstyle=\ttfamily\scriptsize,
+    breaklines=true,
+    frame=single,
+    language=C,
+    numbers=left,
+    numberstyle=\tiny,
+    tabsize=4,
+    captionpos=b,
+    xleftmargin=1em,
+    framexleftmargin=1em
+}
+
+\setlength{\headheight}{1.5cm}
+
+% --- CABEÇALHO ---
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[L]{\includegraphics[width=4.5cm,height=1.5cm]{Logos/logoFT.png}}
+    \fancyhead[R]{\includegraphics[width=4.5cm,height=1.5cm]{Logos/logoUnB.png}}
+    \renewcommand{\headrulewidth}{1pt}
+}
+
+\begin{document}
+
+\title{Relatório do Trabalho Final:\\ \textit{Metal Slug Demake} na DE1-SoC}
+
+\author{
+    \begin{tabular}{cc}
+        Gabriell de Luccas Rêgo Lourenço & Pedro Daniel Bomtempo Medeiros\\
+        {\tt\small 221007143} & {\tt\small 202028759} \\
+        \multicolumn{2}{c}{Guilherme Achilles de Oliveira e Aguiar} \\
+        \multicolumn{2}{c}{{\tt\small 200061593}}
+    \end{tabular}
+    \\\\
+    \textbf{Disciplina:} CIC0130 - Introdução aos Sistemas Embarcados \\
+    \textbf{Semestre:} 2026/1 \quad \textbf{Professor:} Prof. Ricardo Pezzuol Jacobi
+}
+
+\maketitle
+\thispagestyle{plain}
+
+% ============================================================
+\section{Introdução}
+% ============================================================
+O presente relatório documenta o projeto e a implementação de um jogo digital do gênero \textit{run-and-gun}, inspirado na franquia \textit{Metal Slug}, desenvolvido como \textit{demake} para a placa de desenvolvimento DE1-SoC da Intel/Altera. A atividade compõe o trabalho final da disciplina de Introdução aos Sistemas Embarcados.
+
+O jogo possui três fases completas, além de uma fase bônus secreta (\textit{Easter Egg}), totalizando quatro cenários jogáveis com inimigos distintos, sistema de \textit{power-ups}, dois tipos de projéteis, pulo duplo e um sistema de pontuação integrado aos periféricos de hardware da placa.
+
+A aplicação foi integralmente programada em linguagem C, utilizando o sistema operacional Linux embarcado no processador HPS (ARM Cortex-A9) da DE1-SoC. A interação com o hardware é realizada via mapeamento de memória (\texttt{mmap} sobre \texttt{/dev/mem}), acessando diretamente os periféricos: saída de vídeo VGA, displays de 7 segmentos, LEDs vermelhos e chaves (\textit{switches}).
+
+% ============================================================
+\section{Como Compilar e Executar o Código}
+% ============================================================
+Para otimizar o processo de desenvolvimento e evitar a lentidão de compilar nativamente na placa, adotou-se o fluxo de compilação cruzada (\textit{Cross-Compilation}) a partir de um computador (Windows/Linux) e posterior transferência do binário final. Para detalhes de comandos pontuais, recomenda-se a leitura do arquivo \texttt{README.md} na raiz do projeto.
+
+\subsection{Compilação Cruzada (PC)}
+O projeto requer o compilador GCC ARM (ex: \texttt{arm-linux-gnueabihf-gcc}) e o sistema CMake (versão 3.16+). No terminal do PC, o executável é gerado utilizando o arquivo \texttt{arm\_toolchain.cmake} e desativando o ambiente de teste local SDL2:
+{\scriptsize
+\begin{verbatim}
+$ cmake -B build_arm -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=arm_toolchain.cmake \
+  -DUSE_SDL_BACKEND=OFF
+$ cmake --build build_arm
+\end{verbatim}
+}
+A \textit{flag} \texttt{-static} é embutida para evitar problemas de compatibilidade com a versão da GLIBC da DE1-SoC.
+
+\subsection{Conexão Serial e Configuração de IP}
+Para acessar o terminal da placa DE1-SoC e preparar o recebimento do arquivo, utiliza-se a porta Serial (via \textit{software} como o PuTTY, configurado a 115200 \textit{baud rate}). Após realizar \textit{login} como \texttt{root}, utiliza-se o comando \texttt{ifconfig eth0 <IP>} para atribuir um endereço IP estático na placa, habilitando a transferência direta via cabo de rede (Ethernet).
+
+\subsection{Transferência e Execução (TCP/IP)}
+Constatou-se que a transferência de binários grandes pela conexão Serial (\texttt{COM}) causava perda e corrompimento de dados (\textit{bit-flips}). Por isso, utiliza-se TCP/IP:
+\begin{enumerate}
+    \item Na placa DE1-SoC, abre-se uma porta via Netcat no modo escuta: \texttt{nc -l 12345 > metalslug}
+    \item No PC, envia-se o executável direcionando-o para o IP obtido: \texttt{python -c "import socket; ..."}
+\end{enumerate}
+Por fim, no terminal da placa, concede-se permissão de execução (\texttt{chmod +x metalslug}) e executa-se o jogo como superusuário (\texttt{./metalslug}) para viabilizar o acesso direto ao \texttt{/dev/mem}.
+
+% ============================================================
+\section{Funcionamento do Jogo}
+% ============================================================
+
+\subsection{Visão Geral}
+O jogo segue a mecânica clássica de \textit{run-and-gun}: o jogador controla o personagem MegaMan em cenários de rolagem horizontal, enfrentando ondas de inimigos com diferentes comportamentos. O objetivo de cada fase é eliminar uma quantidade mínima de inimigos para progredir à fase seguinte.
+
+\subsection{Fluxo de Telas}
+A arquitetura do jogo engloba uma máquina de estados principal responsável por gerenciar e orquestrar as transições de tela e fases. Tais cenários e o progresso correspondente encontram-se sumarizados na Tabela~\ref{tab:telas}.
+
+\begin{table}[H]
+\centering
+\caption{Fluxo de Telas do Jogo.}
+\label{tab:telas}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Tela / Fase} & \textbf{Descrição e Mecânica do Nível} \\ \midrule
+\textbf{Menu Inicial} & Tela de título com a opção de iniciar o jogo. \\
+\textbf{Fase 1 (Ártico)} & Fase com 10 soldados paraquedistas. Chegar no final à direita avança de fase; voltar para a extrema esquerda leva à fase bônus. \\
+\textbf{Fase 1.5 (Estilo Mario)} & Arena fechada contendo o chefe Copycat, que imita os movimentos do jogador com um atraso de 3 \textit{frames}. \\
+\textbf{Fase 2 (Cidade Quebrada)} & Fase com 10 Spider Jockeys (inimigos que atiram flechas em formato de parábola). \\
+\textbf{Fase 3 (Bunker)} & Combate final contra o Tank Boss. O jogador deve derrotar os inimigos ejetados pelo tanque para reduzir a vida do chefe. \\
+\textbf{Game Over} & Aparece quando a vida do jogador (indicada pelos LEDs) chega a zero, com opção de reiniciar o jogo. \\
+\textbf{Vitória / Final} & Ativada ao derrotar o chefe final. Exibe a animação de vitória e a tela de créditos. \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Game Loop}
+O laço principal de cada fase segue o padrão clássico de \textit{game loop}, repetindo-se iterativamente a aproximadamente 60 quadros por segundo, conforme ilustrado na Figura~\ref{fig:gameloop}.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[>=Stealth, node distance=1.5cm, 
+      box/.style={draw, rounded corners, fill=blue!10, text width=3.5cm, align=center, minimum height=1cm, font=\scriptsize},
+      arrow/.style={->, thick}]
+
+      \node[box] (input) {1. Leitura de Entradas\\ \tiny (Teclado, Mouse, SW0)};
+      \node[box, below=0.6cm of input] (update) {2. Atualização Lógica\\ \tiny (Física, IA, Colisões)};
+      \node[box, below=0.6cm of update] (render) {3. Renderização\\ \tiny (Cenário, Sprites, VGA)};
+      \node[box, right=1.2cm of update] (sleep) {4. Controle FPS\\ \tiny (\texttt{usleep})};
+
+      \draw[arrow] (input) -- (update);
+      \draw[arrow] (update) -- (render);
+      \draw[arrow] (render) -| (sleep);
+      \draw[arrow] (sleep) |- (input);
+  \end{tikzpicture}
+  \caption{Etapas do laço principal do jogo (Game Loop).}
+  \label{fig:gameloop}
+\end{figure}
+
+\subsection{Capturas de Tela}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/telas/menu.png}
+  \caption{Tela de menu inicial do jogo.}
+  \label{fig:menu}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\columnwidth]{Fotos/fases/fase1.png}
+  \caption{Fase 1: soldados paraquedistas sobre os aviões quebrados no ártico.}
+  \label{fig:fase1}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\columnwidth]{Fotos/fases/fase1_5.png}
+  \caption{Fase 1.5 (secreta): nível estilo Mario com o Boss Copycat.}
+  \label{fig:fase1_5}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/fases/fase2.png}
+  \caption{Fase 2: inimigos aracnídeos na cidade quebrada.}
+  \label{fig:fase2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/fases/fase3.png}
+  \caption{Fase 3: confronto final no bunker contra o Tank Boss.}
+  \label{fig:fase3}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/telas/game_over.png}
+  \caption{Tela de Game Over.}
+  \label{fig:gameover}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/telas/victory.png}
+  \caption{Tela de vitória e créditos finais.}
+  \label{fig:vitoria}
+\end{figure}
+
+% ============================================================
+\section{Entradas e Saídas}
+% ============================================================
+A interação entre o software e o hardware da DE1-SoC é um dos pontos focais deste trabalho. Seis periféricos da placa foram mapeados e utilizados.
+
+\subsection{Entradas Mapeadas e Funcionalidades}
+
+A Tabela~\ref{tab:inputs} detalha a correspondência analítica dos botões do teclado e interações através do mouse USB. As \textit{threads} acopladas na matriz de processamento ficam retidas aguardando acionamentos nos mapeamentos Unix inerentes no descritor de sistema (\texttt{/dev/input/eventX} e \texttt{/dev/input/mice}).
+
+\begin{table}[H]
+\centering
+\caption{Mapeamento Operacional de Periféricos de Entrada.}
+\label{tab:inputs}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}llX@{}}
+\toprule
+\textbf{Periférico} & \textbf{Sinal Disparador} & \textbf{Resultado da Ação} \\ \midrule
+\textbf{Teclado} & Teclas WASD e Setas & Movimenta o personagem na horizontal. \\
+                 & Barra de Espaço & Faz o personagem pular (suporta pulo duplo). \\
+                 & Tecla K & Ação secundária (usada para \textit{debug}). \\
+                 & Tecla Esc & Encerra o jogo imediatamente. \\ \midrule
+\textbf{Mouse} & Movimento do Mouse & Mira a arma na direção do cursor. \\
+               & Botão Esquerdo & Dispara o tiro normal. \\
+               & Botão Direito & Dispara o tiro carregado (maior velocidade e dano). \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+A interação também ocorre pelas chaves físicas (\textit{switches}) monitoradas no barramento Lightweight Bridge. A chave \textbf{SW0} funciona para pausar o jogo; caso esteja ativada (para cima), o \textit{game loop} ignora as atualizações e congela os sistemas. 
+
+\subsection{Saídas}
+
+\subsubsection{Vídeo VGA (320$\times$240, RGB565)}
+É a saída principal de vídeo do jogo. Para evitar que a tela pisque ou exiba imagens pela metade (o chamado efeito de \textit{tearing}), utilizamos a técnica de \textit{Double Buffering} (ou \textit{Shadow Buffering}). Em vez de desenhar os pixels diretamente na tela um por um, o jogo primeiro desenha o quadro inteiro em uma memória temporária na RAM. Somente quando o quadro está 100\% pronto, ele é copiado de uma só vez (usando a função \texttt{memcpy}) para a memória de vídeo real do Pixel Buffer (no endereço \texttt{0xC8000000}). Isso garante animações suaves e sem cortes. O jogo roda estável a aproximadamente 60 FPS, utilizando um atraso controlado de \texttt{usleep(16000)} no final de cada \textit{frame}.
+
+\subsubsection{Displays de 7 Segmentos e LEDs Vermelhos}
+Os displays de 7 segmentos exibem a quantidade decimal de inimigos restantes na fase. Já os 10 LEDs vermelhos representam a vida atual do jogador; eles vão apagando linearmente conforme o personagem sofre dano.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\columnwidth]{Fotos/outros/19_hardware.png}
+  \caption{Hardware em uso: LEDs (vida), displays 7-seg (inimigos restantes) e chave SW0 (pausa).}
+  \label{fig:hardware}
+\end{figure}
+
+\subsection{Mapa de Memória Utilizado}
+A Tabela~\ref{tab:mapa_mem} resume os endereços físicos acessados via diretivas de alocação de acesso direto com os quais a simulação acerta seus vetores e portas digitais:
+
+\begin{table}[H]
+\centering
+\caption{Endereços físicos dos periféricos utilizados.}
+\label{tab:mapa_mem}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lXl@{}}
+\toprule
+\textbf{Periférico} & \textbf{Sítio Físico} & \textbf{Finalidade} \\ \midrule
+Pixel Buffer (Front) & \texttt{0xC8000000} & Sinalização de Vídeo (VGA) \\
+Char Buffer & \texttt{0xC9000000} & Sobreposição do canal de Texto \\
+Lightweight Bridge & \texttt{0xFF200000} & Origem basilar do acesso \\
+\quad -- Matriz LEDR & \texttt{+0x00} & Exposição vital em 10 bits \\
+\quad -- Displays HEX & \texttt{+0x20} e \texttt{+0x30} & Metrificação do contingente restante \\
+\quad -- Chaves & \texttt{+0x40} & Modulação de alternância (pausa) \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Gráficos}
+% ============================================================
+
+\subsection{Pipeline de Sprites e Arte}
+A criação dos gráficos inicia-se com a edição de quadros no software Piskel~\cite{piskel}, utilizando como base recursos do The Spriters Resource~\cite{spriters}. Em seguida, um \textit{script} Python converte as imagens para o formato \texttt{RGB565}, onde a cor Magenta (RGB 255, 0, 255) é usada para definir o fundo transparente dos \textit{sprites}. Por fim, as imagens são exportadas como matrizes diretamente em cabeçalhos C, o que evita carregamentos dinâmicos de disco durante o jogo e melhora o desempenho.
+
+\subsection{Sistema de Animação e Cenários}
+O sistema de animação suporta dois modos: execução em \textit{loop} (ideal para ações contínuas como andar ou \textit{idle}) e execução única (onde a animação trava no último \textit{frame}, muito utilizado na animação de morte, fazendo o personagem permanecer caído no chão).
+
+Para envolver todo o espectro no mapa interativo o terreno alinhado se estrutura na separação estrita visual referenciada na Tabela~\ref{tab:cenarios}.
+
+\begin{table}[H]
+\centering
+\caption{Camadas Estruturais do Cenário.}
+\label{tab:cenarios}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Plano Camada} & \textbf{Significado e Imposição} \\ \midrule
+\textbf{Background (BG)} & Preenchimento primário sem vãos, antecede a qualquer preenchimento. \\
+\textbf{Foreground (FG)} & Objeto em plano proeminente cujos furos pretos literais expõe toda vida gráfica anterior. \\
+\textbf{Colisão Lógica} & Disposição quadriculada num abecedário de numerais variando num limiar \texttt{0...3} e designando bloqueio contínuo, chão passível e armadilha ou declive. \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Sistema de Pontuação e Vantagens}
+% ============================================================
+A pontuação se baseia intrinsicamente no cômputo restrito de finalização contínua de alvos da Inteligência Artificial em trânsito pela planície. Em confluência, a erradicação esporádica instiga prêmios efêmeros com propriedades que amplificam o embate de modo circunstancial. A Tabela~\ref{tab:pontuacao} delineia ambos os aspectos.
+
+\begin{table}[H]
+\centering
+\caption{Progressão e Incrementos (Power-ups).}
+\label{tab:pontuacao}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Condição da Progressão} & \textbf{Taxa Exigida para Liberação de Rota} \\ \midrule
+\textbf{Fases de Avanço Curto} & Exige derrotar um chefe específico ou eliminar os 10 inimigos daquela tela. \\
+\textbf{Fases Contínuas} & Requer a sobrevivência até eliminar 30 inimigos ou esgotar a vida do Boss gerador. \\ \midrule
+\textbf{Premiações Probabilísticas} & \textbf{Recompensa Concedida ao Usuário} \\ \midrule
+\textbf{Cura (Kit Médico)} & Recupera 2 pontos de vida do jogador (sem ultrapassar o máximo). \\
+\textbf{Dano e Super Pulo} & Multiplica o dano dos tiros por 3 e aumenta a força do pulo temporariamente. \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+A ponte que conecta esses limites processuais na variável do código em memória às chapas no protótipo transcorre isoladamente por chaves externas de nomeação \texttt{hw\_display...} atuando na fenda cega existente na união do processamento lógico da área estendida onde não há conexão prévia ao ponteiro de I/O de controle nativo.
+
+% ============================================================
+\section{Estrutura do Código (SRP e Módulos)}
+% ============================================================
+O software adotou princípios rígidos de particionamento lógico para replicar instâncias com responsabilidades muito bem dissecadas em agrupamentos de estado emulando as táticas Orientadas ao Objeto através do C padrão (C17). O desenho referencial da malha de conectores das classes abrange uma folha completa (disponibilizado detalhadamente no Anexo~\ref{appendix:uml}). A Tabela~\ref{tab:modulos} define sumariamente o escopo isolado elementar de fragmentação destas partes operacionais.
+
+\begin{table}[H]
+\centering
+\caption{Assentamento Basilar dos Módulos Principais do Sistema.}
+\label{tab:modulos}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Arquivo / Módulo} & \textbf{Domínio de Influência e Propósito Factual} \\ \midrule
+\texttt{main.c} & Ponto de entrada. Inicializa o hardware, o \textit{framebuffer} e gerencia as transições de telas (Menu $\to$ Fases $\to$ Game Over). \\
+\texttt{jogador.c} & Gerencia os \textit{status} do jogador (vida, \textit{buffs}), entradas de controle, física e processamento de dano. \\
+\texttt{faseX\_logic.c} & Orquestrador (\textit{game loop}) específico de cada fase, alocando cenários, entidades, inimigos e regras de colisão globais. \\
+\texttt{cenario.c} & Desenha o plano de fundo (\textit{parallax}) com base na câmera e consulta colisões no \textit{grid} lógico do mapa. \\
+\texttt{inimigo.c} & Base de Inteligência Artificial, física e gerenciamento de dano dos inimigos genéricos (soldados). \\
+\texttt{tiro.c} & Gerencia todos os projéteis através de um \textit{pool} fixo em memória (sem uso de \texttt{malloc} durante o combate). \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+No desdobramento do \textit{inimigo.c}, adversários isolados agregam especificidades a parte, detalhados pela Tabela~\ref{tab:inimigos}.
+
+\begin{table}[H]
+\centering
+\caption{Diversificações Comportamentais de Oponentes.}
+\label{tab:inimigos}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Tipo} & \textbf{Reação Extrema Desenvolvida na Extensão} \\ \midrule
+\textbf{Spider Jockey} & Atira flechas com física balística (parábola com gravidade calculada por frame). \\
+\textbf{Tank Boss} & Permanece estático na ponta da tela atirando horizontalmente e arremessando Goombas, que funcionam como inimigos vivos adicionais. \\
+\textbf{Goomba} & Inimigo rasteiro que anda retilíneo e morre instantaneamente ao ser esmagado pelo pulo do jogador (mecânica de \textit{stomp}). \\
+\textbf{Copycat} & Mimetiza a cadência das teclas exatas com base temporal cíclica adiada em 3 frames na memória (\textit{buffer}), imitando movimentos. \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Abstração de Framebuffer (Portabilidade)}
+% ============================================================
+Uma decisão arquitetural central do projeto é a existência de uma camada base estrutural de compatibilidade. O encapsulamento se desenvolveu sem atrelar chamadas da rotina crua, resguardando todo o código para um direcionamento sob \texttt{framebuffer.h}. Dois \textit{backends} implementam esta interface simultaneamente: o lado SDL2 cria os moldes em janelas simuladas do Windows/Linux escaladas sem corromper a grade do monitor, permitindo varreduras do fluxo no desenvolvimento. Por alternativa o compilador DE1-SoC aciona e redireciona os vetores nativos contendo as rotinas que ligam no endereçamento Unix de forma orgânica. 
+
+% ============================================================
+\section{Física e Colisão}
+% ============================================================
+A gestão dimensional perante as esferas lógicas e objetos colidíveis foi isolada de modo simplório na engrenagem listada na Tabela~\ref{tab:fisica}. O algoritmo efetua verificações vetoriais fragmentadas e detecta fendas, relevos e blocos isolantes.
+
+\begin{table}[H]
+\centering
+\caption{Mecânicas Atuantes no Tratamento Espacial.}
+\label{tab:fisica}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Força Natural} & \textbf{Regras Matemáticas Agregadas ao Motor} \\ \midrule
+\textbf{Força Gravitacional} & Adiciona +0.5 à velocidade Y por frame, com velocidade terminal (limite máximo de queda) fixada em 7.0. \\
+\textbf{Decolagem do Salto} & Aplica uma velocidade Y negativa instantânea. O pulo duplo é permitido se o jogador estiver no ar e ainda não o tiver utilizado. \\
+\textbf{Restrição Sólida} & Bloqueia o avanço horizontal ao colidir com paredes e detecta o chão para interromper a queda. \\
+\textbf{Refração do Recuo} & Quando o jogador sofre dano, ele é empurrado na direção contrária (\textit{knockback}) e recebe alguns frames de invulnerabilidade (pisca vermelho). \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Desempenho e Principais Dificuldades}
+% ============================================================
+
+\subsection{Double Buffering (Shadow Buffer)}
+Para evitar o \textit{tearing} na tela (oscilações e cortes), implementou-se o \textit{Shadow Buffering}. O jogo desenha todos os pixels em um \textit{buffer} temporário na RAM do processador (HPS) e, ao final do \textit{frame}, copia a imagem inteira de uma só vez para o Pixel Buffer da VGA usando a função \texttt{memcpy}, simulando uma transferência em bloco (DMA).
+
+\subsection{Multithreading (Concorrência)}
+A leitura de dispositivos de entrada no Linux (\texttt{/dev/input/}) é bloqueante e paralisaria o jogo. A solução foi criar três \textit{threads} separadas (teclado, mouse, chaves) usando \texttt{pthreads}. Elas rodam em paralelo e atualizam as variáveis de controle globais (marcadas como \texttt{volatile}). Como são apenas atribuições simples em inteiros (que são operações atômicas na arquitetura ARM), o sistema evitou o uso de \textit{mutex}, melhorando o desempenho da leitura.
+
+\subsection{Principais Desafios}
+A Tabela~\ref{tab:dificuldades} elucida particularidades complexas ocorridas durante a engenharia da simulação.
+
+\begin{table}[H]
+\centering
+\caption{Dificuldades Encontradas e Soluções Adotadas.}
+\label{tab:dificuldades}
+\scriptsize
+\begin{tabularx}{\columnwidth}{@{}lX@{}}
+\toprule
+\textbf{Barreira ou Anomalia} & \textbf{Reestruturação ou Correção Aplicada} \\ \midrule
+\textbf{Mapeamento de Memória} & O acesso aos endereços de hardware no Linux ARM falhava sem privilégios. Foi necessário executar o jogo como \textit{root} e mapear a memória física corretamente usando \texttt{/dev/mem}. \\
+\textbf{Conversão RGB565} & O \textit{script} Python gerava as paletas de cores invertendo os canais Red e Blue. O problema foi corrigido ajustando a ordem dos bits (operações lógicas bit-a-bit) no exportador Python. \\
+\textbf{Transferência de Arquivo} & A conexão Serial corrompia o executável por ter um limite de banda menor. A solução foi conectar o cabo Ethernet e transferir o arquivo via rede TCP/IP utilizando a ferramenta Netcat (\texttt{nc}). \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Conclusão}
+% ============================================================
+O projeto atendeu a todos os requisitos propostos pela disciplina, integrando conceitos de manipulação direta de registradores, mapeamento de memória, concorrência com pthreads e engenharia de software (modularização, abstração de hardware, portabilidade). O jogo final conta com 4 fases jogáveis, 5 tipos de inimigos com comportamentos distintos, sistema de power-ups, dois tipos de projéteis, pulo duplo, HUD com barras de munição e integração completa com os periféricos da placa DE1-SoC (VGA, LEDs, displays de 7 segmentos e switches).
+
+% ============================================================
+% REFERÊNCIAS
+% ============================================================
+\begin{thebibliography}{9}
+
+\bibitem{piskel}
+J. Desbuquois,
+\textit{Piskel --- Free Online Sprite Editor},
+Disponível em: \url{https://www.piskelapp.com/}.
+Acesso em: jul. 2026.
+
+\bibitem{spriters}
+The Spriters Resource,
+\textit{The Spriters Resource --- Sprite Ripping Community},
+Disponível em: \url{https://www.spriters-resource.com/}.
+Acesso em: jul. 2026.
+
+\bibitem{de1soc}
+Intel/Altera,
+\textit{DE1-SoC Board --- User Manual},
+Terasic Technologies, 2014.
+
+\bibitem{sdl2}
+Simple DirectMedia Layer,
+\textit{SDL2 --- Cross-platform Development Library},
+Disponível em: \url{https://www.libsdl.org/}.
+
+\bibitem{msys2}
+MSYS2,
+\textit{MSYS2 --- Software Distribution and Building Platform for Windows},
+Disponível em: \url{https://www.msys2.org/}.
+Acesso em: jul. 2026.
+
+\bibitem{github}
+G. A. O. Aguiar, P. D. B. Medeiros, e G. L. R. Lourenço,
+\textit{Repositório do Projeto: Metal Slug Demake na DE1-SoC},
+Disponível em: \url{https://github.com/GuilhermeAchilles/Trabalho-Final-DE1-S0C---Sistema-Embarcados-2026.1.git}.
+Acesso em: jul. 2026.
+
+\end{thebibliography}
+
+% ============================================================
+% ANEXO: UML Completo
+% ============================================================
+\onecolumn
+\appendix
+\section{Diagrama UML Detalhado}
+\label{appendix:uml}
+
+\begin{figure}[H]
+  \centering
+  \caption{Diagrama UML de Classes do Sistema --- structs, atributos e operações.}
+  \label{fig:uml_full}
+  \vspace{6pt}
+  \resizebox*{!}{0.85\textheight}{
+  \begin{tikzpicture}[>=Stealth, line width=0.6pt,
+      uml/.style={inner sep=0pt, outer sep=3pt, anchor=north}]
+
+    % ==========================================
+    %  ROW 0: ORQUESTRADOR (y = 0)
+    % ==========================================
+    \node[rectangle split, rectangle split parts=2, draw, thick, align=center,
+          text width=6cm, inner sep=4pt, fill=purple!10, rounded corners] (MAIN) at (8, 0) {
+      \textbf{main.c / faseX\_logic.c} \\
+      \tiny \textit{(Orquestrador e Game Loop)}
+      \nodepart{two}
+      \scriptsize
+      Inicializa o Hardware (Framebuffer) \\
+      Instancia Jogador e Cenário \\
+      Loop: Entrada $\to$ Física $\to$ Colisão $\to$ Render
+    };
+
+    % ==========================================
+    %  ROW 1: HARDWARE ABSTRACTION (y = -5.5)
+    % ==========================================
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=5.5cm, inner sep=4pt, fill=blue!10, rounded corners] (FB) at (3.5, -5.5) {
+      \centering \textbf{framebuffer\_de1soc} \\
+      \centering \tiny \textit{(driver de hardware)} \par
+      \nodepart{two}
+      \scriptsize
+      shadow\_buffer : fb\_color\_t* (RAM) \\
+      key\_state[256] : volatile int \\
+      mouse\_x, mouse\_y : volatile int \\
+      3 pthreads (teclado, mouse, switches)
+      \nodepart{three}
+      \scriptsize
+      fb\_init() : void \\
+      fb\_shutdown() : void \\
+      fb\_put\_pixel(x, y, color) : void \\
+      fb\_present() : void \quad// RAM $\to$ VGA \\
+      fb\_key\_down(key) : int \\
+      fb\_mouse\_pos(*x, *y) : void
+    };
+
+    \node[rectangle split, rectangle split parts=2, draw, thick, align=left,
+          text width=5.5cm, inner sep=4pt, fill=blue!10, rounded corners] (HW) at (12.5, -5.5) {
+      \centering \textbf{hardware\_state} \\
+      \centering \tiny \textit{(ponte software $\leftrightarrow$ hardware)} \par
+      \nodepart{two}
+      \scriptsize
+      hw\_display\_inimigos\_restantes : int \\
+      hw\_leds\_vida\_personagem : int \\
+      hw\_jogo\_pausado : int
+    };
+
+    % ==========================================
+    %  ROW 2: CORE GAME (y = -11.5)
+    % ==========================================
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=6.0cm, inner sep=4pt, fill=green!10, rounded corners] (JOG) at (3.5, -11.5) {
+      \centering \textbf{jogador\_t} \\
+      \centering \tiny \textit{(personagem/jogador.h)} \par
+      \nodepart{two}
+      \scriptsize
+      px, py : int \quad vel\_y : float \\
+      vida : int (0--10) \quad direcao : int ($\pm$1) \\
+      no\_chao, pulo\_duplo\_usado : int \\
+      tiros\_normais\_restantes : int (15) \\
+      tiros\_carregados\_restantes : int (5) \\
+      buff\_velocidade / instakill / super\_pulo \\
+      9 animações (idle, correr, pulo, 5$\times$atirar, morrer)
+      \nodepart{three}
+      \scriptsize
+      jogador\_iniciar(spawn\_x, spawn\_y) \\
+      jogador\_atualizar(cenario, cutscene) \\
+      jogador\_processar\_tiro(tiros, dx, dy) \\
+      jogador\_receber\_dano(dano) \\
+      jogador\_receber\_dano\_knockback(dano, orig) \\
+      jogador\_desenhar(camera\_x, camera\_y)
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=6.0cm, inner sep=4pt, fill=green!10, rounded corners] (CEN) at (12.5, -11.5) {
+      \centering \textbf{cenario\_t} \\
+      \centering \tiny \textit{(cenario/cenario.h)} \par
+      \nodepart{two}
+      \scriptsize
+      bg : const uint16\_t* \quad fg : const uint16\_t* \\
+      colisao : const uint8\_t* \\
+      largura, altura : int \\
+      camera\_x, camera\_y : int
+      \nodepart{three}
+      \scriptsize
+      cenario\_iniciar(bg, fg, col, w, h) \\
+      cenario\_colisao(x, y) : int \\
+      cenario\_solido(x, y) : int \\
+      cenario\_chao\_y(x, start\_y) : int \\
+      cenario\_centralizar\_camera(alvo\_x, alvo\_y) \\
+      cenario\_desenhar\_bg() / \_fg()
+    };
+
+    % ==========================================
+    %  ROW 3: GAME SYSTEMS (y = -17.5)
+    % ==========================================
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=4.0cm, inner sep=4pt, fill=orange!10, rounded corners] (TIR) at (2.5, -17.5) {
+      \centering \textbf{tiros\_t / tiro\_t} \\
+      \centering \tiny \textit{(ataques/tiros/tiro.h)} \par
+      \nodepart{two}
+      \scriptsize
+      tiros[TIRO\_MAX=16] \\
+      tiro\_t: x, y, dx, dy, ativo \\
+      tipo\_tiro\_t: sprite*, vel, dano
+      \nodepart{three}
+      \scriptsize
+      tiros\_disparar(x,y,dx,dy,tipo) \\
+      tiros\_atualizar() \\
+      tiros\_colidir\_com(rect) : int \\
+      tiros\_desenhar(cam\_x, cam\_y)
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=4.0cm, inner sep=4pt, fill=orange!10, rounded corners] (COL) at (8, -17.5) {
+      \centering \textbf{retangulo\_t} \\
+      \centering \tiny \textit{(colisao/colisao.h)} \par
+      \nodepart{two}
+      \scriptsize
+      x, y : int \\
+      largura, altura : int
+      \nodepart{three}
+      \scriptsize
+      colisao\_retangulos(a, b) : int \\
+      (AABB --- retorna 1 se cruzam)
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=4.0cm, inner sep=4pt, fill=orange!10, rounded corners] (INI) at (13.5, -17.5) {
+      \centering \textbf{inimigo\_t} \\
+      \centering \tiny \textit{(inimigo/inimigo.h)} \par
+      \nodepart{two}
+      \scriptsize
+      px, py, chao\_y : int \\
+      vida, direcao, estado \\
+      6 animações + tiro\_tipo \\
+      intervalo\_tiro : int
+      \nodepart{three}
+      \scriptsize
+      inimigo\_iniciar(...) \\
+      inimigo\_atualizar(tiros, alvo) \\
+      inimigo\_receber\_dano(dano) \\
+      inimigo\_esta\_morto() : int \\
+      inimigo\_desenhar(cam)
+    };
+
+    % ==========================================
+    %  ROW 4: SPECIALIZED ENEMIES (y = -23.5)
+    % ==========================================
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=3.3cm, inner sep=4pt, fill=red!10, rounded corners] (SJ) at (2, -23.5) {
+      \centering \textbf{spider\_jockey\_t} \par
+      \nodepart{two}
+      \scriptsize
+      px, py, vida, estado \\
+      flechas[8] : sj\_flecha\_t \\
+      cooldown\_tiro : int
+      \nodepart{three}
+      \scriptsize
+      sj\_iniciar() \\
+      sj\_atualizar() \\
+      sj\_flechas\_colidir() \\
+      sj\_desenhar()
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=3.3cm, inner sep=4pt, fill=red!10, rounded corners] (TK) at (6.2, -23.5) {
+      \centering \textbf{tank\_t} \par
+      \nodepart{two}
+      \scriptsize
+      px, py : int \\
+      estado : enum \\
+      anim\_idle, anim\_shoot
+      \nodepart{three}
+      \scriptsize
+      tank\_iniciar(px, py) \\
+      tank\_atualizar(goombas) \\
+      tank\_desenhar(cam)
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=3.3cm, inner sep=4pt, fill=red!10, rounded corners] (GB) at (10.4, -23.5) {
+      \centering \textbf{goomba\_t} \par
+      \nodepart{two}
+      \scriptsize
+      x, y, vx, vy : float \\
+      estado : enum \\
+      direcao : int
+      \nodepart{three}
+      \scriptsize
+      goomba\_iniciar(x,y,..) \\
+      goomba\_atualizar() \\
+      goomba\_esmagar() \\
+      goomba\_desenhar(cam)
+    };
+
+    \node[rectangle split, rectangle split parts=3, draw, thick, align=left,
+          text width=3.3cm, inner sep=4pt, fill=red!10, rounded corners] (CC) at (14.6, -23.5) {
+      \centering \textbf{copycat\_t} \par
+      \nodepart{two}
+      \scriptsize
+      px, py : int \\
+      history[DELAY=3] \\
+      vida, morto : int
+      \nodepart{three}
+      \scriptsize
+      copycat\_iniciar() \\
+      copycat\_registrar\_estado() \\
+      copycat\_atualizar() \\
+      copycat\_receber\_dano() \\
+      copycat\_desenhar()
+    };
+
+    % ==========================================
+    %  ARROWS (relationships)
+    % ==========================================
+
+    % Main -> Orchestrates all major systems (Routed orthogonally)
+    \draw[->, thick, purple!70, dashed] (MAIN.south) -- (8, -2.5) -| (FB.north east);
+    \draw[<->, thick, purple!70, dashed] (MAIN.south) -- (8, -2.5) -| (HW.north)
+        node[pos=0.85, left, font=\scriptsize, text=purple!80, align=right] {le switch pause \\ envia leds/disp};
+    \draw[->, thick, purple!70, dashed] (MAIN.south) -- (8, -8.5) -| (JOG.north east);
+    \draw[->, thick, purple!70, dashed] (MAIN.south) -- (8, -8.5) -| (CEN.north west);
+    \draw[->, thick, purple!70, dashed] (MAIN.south) -- (8, -14.5) -| (INI.north)
+        node[pos=0.85, left, font=\scriptsize, text=purple!80] {gerencia ia};
+
+    % Hardware -> Core
+    \draw[->, thick, blue!70] (JOG.north) -- (FB.south)
+        node[midway, left, font=\scriptsize, text=blue!80] {le input};
+
+    % Core -> Systems
+    \draw[->, thick, black!60] (JOG.south) -- (TIR.north)
+        node[midway, left, font=\scriptsize] {dispara};
+
+    \draw[->, thick, black!60] (TIR.east) -- (COL.west)
+        node[midway, above, font=\scriptsize] {usa hitbox};
+
+    \draw[->, thick, purple!70, dashed] (MAIN.south) -- (COL.north)
+        node[pos=0.95, right, font=\scriptsize, text=purple!80] {verifica hitboxes};
+
+    % Systems -> Enemies (Conceptual grouping via INI)
+    \draw[->, thick, black!60, dashed] (INI.south) -- (13.5, -20.5) -| (SJ.north);
+    \draw[->, thick, black!60, dashed] (INI.south) -- (13.5, -20.5) -| (TK.north);
+    \draw[->, thick, black!60, dashed] (INI.south) -- (13.5, -20.5) -| (GB.north);
+    \draw[->, thick, black!60, dashed] (INI.south) -- (13.5, -20.5) -| (CC.north);
+
+    % Enemy relationships
+    \draw[->, thick, orange!70] (TK.east) -- (GB.west)
+        node[midway, above, font=\scriptsize, text=orange!80] {lança};
+
+    % ==========================================
+    %  LEGEND
+    % ==========================================
+    \node[anchor=north west, font=\scriptsize, text width=16cm] at (0, -28) {
+        \textbf{Legenda:} Setas contínuas = dependência direta (uso de API). 
+        Setas tracejadas = comunicação indireta (variáveis globais, herança ou orquestração).
+        Cada caixa representa uma \textit{struct} em C (ou arquivo central) com seus campos (atributos) e funções (operações).
+    };
+
+  \end{tikzpicture}
+  }
+\end{figure}
+
+% ============================================================
+\section{Estrutura de Pastas do Projeto}
+\label{appendix:tree}
+
+\begin{lstlisting}[language={}, numbers=none, frame=single,
+    basicstyle=\ttfamily\scriptsize, columns=fixed]
+.
+|-- CMakeLists.txt              (sistema de build)
+|-- arm_toolchain.cmake         (cross-compilation ARM)
+|-- include/
+|   |-- animacao/animacao.h        (gerenciador de quadros 2D)
+|   |-- ataques/tiros/tiro.h       (logica de projeteis)
+|   |-- cenario/cenario.h          (scroll de terrenos e fases)
+|   |-- colisao/colisao.h          (deteccao de hitboxes AABB)
+|   |-- final_tela/final_tela.h    (declaracoes da tela de vitoria)
+|   |-- framebuffer/framebuffer.h  (abstracao de hardware VGA)
+|   |-- game_over/game_over.h      (declaracoes da tela de derrota)
+|   |-- hardware/hardware_state.h  (ponte para chaves e leds)
+|   |-- icones/                    (imagens da interface UI)
+|   |-- inimigo/inimigo.h          (struct base da Inteligencia)
+|   |-- inimigos/                  (IAs especificas)
+|   |   |-- copycat/copycat.h          (boss que imita o jogador)
+|   |   |-- goomba/goomba.h            (inimigo rasteiro simples)
+|   |   |-- soldado/soldado.h          (soldado paraquedista)
+|   |   |-- spider_jockey/spider_jockey.h (aranha atiradora)
+|   |   -- tank/tank.h                (boss final gerador)
+|   |-- menu/menu.h                (declaracoes do menu inicial)
+|   |-- personagem/jogador.h       (entidade do heroi controlado)
+|   |-- sprite/sprite.h            (funcoes de renderizacao base)
+|   -- ui/ui.h                    (heads-up display vital)
+-- src/
+    |-- animacao/animacao.c        (motor logico de tempo/frames)
+    |-- ataques/tiros/tiro.c       (alocacao do pool de tiros)
+    |-- cenario/cenario.c          (motor de background parallax)
+    |   |-- fase1/fase1_dados.c        (assets da planicie artica)
+    |   |-- fase1_5/fase1_5_dados.c    (assets do cenario Mario)
+    |   |-- fase2/fase2_dados.c        (assets da cidade destruida)
+    |   -- fase3/fase3_dados.c        (assets do bunker final)
+    |-- colisao/colisao.c          (matematica de intersecsoes)
+    |-- fase1_5_logic.c            (regras de gameplay da Fase 1.5)
+    |-- fase1_logic.c              (regras de gameplay da Fase 1)
+    |-- fase2_logic.c              (regras de gameplay da Fase 2)
+    |-- fase3_logic.c              (regras de gameplay da Fase 3)
+    |-- final_tela/final_tela.c    (loop da sequencia final)
+    |-- framebuffer/
+    |   |-- framebuffer_de1soc.c       (kernel mmap, Linux ARM)
+    |   -- framebuffer_sdl.c          (simulador PC via janelas)
+    |-- game_over/game_over.c      (loop da tela de derrota)
+    |-- hardware_state.c           (memoria global de perifericos)
+    |-- inimigo/inimigo.c          (matematica das hordas)
+    |-- inimigos/
+    |   |-- copycat/copycat.c          (loop espelho do copycat)
+    |   |-- goomba/goomba.c            (loop linear do goomba)
+    |   |-- spider_jockey/spider_jockey.c (loop balistico do spider)
+    |   -- tank/tank.c                (loop central do boss)
+    |-- jogador.c                  (fisica vetorial do heroi)
+    |-- main.c                     (maquina principal orquestradora)
+    |-- menu/menu.c                (loop do menu press start)
+    |-- sprite/sprite.c            (transmissor de buffers)
+    -- ui.c                       (camada front-end das barras)
+\end{lstlisting}
+
+\end{document}

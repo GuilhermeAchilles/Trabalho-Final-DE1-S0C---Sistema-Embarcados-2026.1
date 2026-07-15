@@ -47,11 +47,11 @@ O jogo utiliza os periféricos nativos da placa (VGA, Displays de 7-Segmentos, L
    ```
 
 ### 2. Acessando a Placa via Cabo Serial (PuTTY)
-Antes de transferir via rede, você precisa entrar no terminal da placa para saber qual IP ela recebeu.
+Antes de transferir via rede, você precisa entrar no terminal da placa para configurar o IP da interface de rede (Ethernet).
 1. Instale o **Driver USB-to-UART** (FTDI ou Prolific) para que o Windows reconheça o cabo Console da placa.
 2. Descubra a porta COM no *Gerenciador de Dispositivos* (ex: `COM3`).
 3. Abra o **PuTTY**, selecione conexão do tipo **Serial**, insira sua porta COM e defina o *Speed (Baud rate)* como `115200`.
-4. Clique em *Open*, faça login como `root` e rode o comando `ifconfig` para anotar o IP da placa (ex: `164.41.179.50`).
+4. Clique em *Open*, faça login como `root` e rode o comando `ifconfig eth0 <IP>` (ex: `ifconfig eth0 192.168.0.100`) para atribuir um IP estático à placa.
 
 ### 3. Transferindo o Jogo via Ethernet (TCP)
 Devido ao tamanho do executável, **não use o cabo Serial para a transferência de arquivos** (é muito lento e corrompe o binário). Use a rede Ethernet:
