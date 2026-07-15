@@ -9,4 +9,4 @@
 5. [05-problemas-resolvidos.md](05-problemas-resolvidos.md) — bugs/armadilhas já encontrados e como foram resolvidos.
 6. [06-transferencia-ethernet.md](06-transferencia-ethernet.md) — como transferir o jogo para a placa via rede.
 
-O `CLAUDE.md` na raiz do projeto é a versão resumida disso tudo, voltada pra dar contexto rápido a sessões do Claude Code. Esta pasta é a versão completa, voltada para o time.
+Esta pasta é a versão completa da documentação, voltada para os membros do time e mantenedores do projeto.
