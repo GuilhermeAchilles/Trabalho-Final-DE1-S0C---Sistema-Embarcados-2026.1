@@ -7,5 +7,6 @@
 3. [03-arquitetura.md](03-arquitetura.md) — estrutura do projeto e a abstração de framebuffer.
 4. [04-portabilidade-de1soc.md](04-portabilidade-de1soc.md) — o que muda ao migrar pra placa.
 5. [05-problemas-resolvidos.md](05-problemas-resolvidos.md) — bugs/armadilhas já encontrados e como foram resolvidos.
+6. [06-transferencia-ethernet.md](06-transferencia-ethernet.md) — como transferir o jogo para a placa via rede.
 
 O `CLAUDE.md` na raiz do projeto é a versão resumida disso tudo, voltada pra dar contexto rápido a sessões do Claude Code. Esta pasta é a versão completa, voltada para o time.
