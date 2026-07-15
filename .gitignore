@@ -1,4 +1,6 @@
 *.py
+!scripts/*.py
+!scripts/*.ps1
 *.png
 !*fase*.png
 !cenario/**/*.png
